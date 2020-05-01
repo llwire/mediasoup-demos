@@ -982,13 +982,13 @@ async function startKurentoFilter() {
   const recvEndpoint = global.kurento.rtp.recvEndpoint;
   const sendEndpoint = global.kurento.rtp.sendEndpoint;
 
-  const filter = await kmsPipeline.create("GStreamerFilter", {
-    command: "videobalance saturation=0.0",
-  });
-  global.kurento.filter = filter;
+  // const filter = await kmsPipeline.create("GStreamerFilter", {
+  //   command: "videobalance saturation=0.0",
+  // });
+  // global.kurento.filter = filter;
 
-  await recvEndpoint.connect(filter);
-  await filter.connect(sendEndpoint);
+  await recvEndpoint.connect(sendEndpoint);
+  // await filter.connect(sendEndpoint);
 }
 
 // ----------------------------------------------------------------------------
