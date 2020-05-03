@@ -2,9 +2,11 @@
 
 const CONFIG = require("./config");
 const MediasoupClient = require("mediasoup-client");
+const KurentoUtils = require("kurento-utils");
 const SocketClient = require("socket.io-client");
 const SocketPromise = require("socket.io-promise").default;
 
+window.kurento = KurentoUtils;
 // ----------------------------------------------------------------------------
 
 // Application state
@@ -13,6 +15,14 @@ const SocketPromise = require("socket.io-promise").default;
 const global = {
   server: {
     socket: null,
+  },
+
+  kurento: {
+    device: null,
+    peers: {
+      send: null,
+      recv: null,
+    },
   },
 
   mediasoup: {
@@ -50,6 +60,7 @@ const ui = {
 };
 
 ui.startWebRTC.onclick = startWebRTC;
+// ui.startWebRTC.onclick = startPresenterStream;
 ui.connectKurento.onclick = connectKurento;
 ui.debug.onclick = () => {
   if (global.server.socket) {
@@ -110,131 +121,61 @@ function connectSocket() {
     ui.connectKurento.disabled = false;
     ui.debug.disabled = false;
   });
+
+  socket.on("ICE_CANDIDATE", (candidate) => {
+    console.log(candidate);
+    global.kurento.peer.addIceCandidate(candidate);
+  });
 }
 
 // ----------------------------------------------------------------------------
 
 async function startWebRTC() {
   console.log("Start WebRTC transmission from browser to mediasoup");
-
-  await startMediasoup();
-  await startWebrtcSend();
+  await startPresenterStream();
 }
 
 // ----
 
-async function startMediasoup() {
+async function startPresenterStream() {
   const socket = global.server.socket;
-
   const socketRequest = SocketPromise(socket);
-  const response = await socketRequest({ type: "START_MEDIASOUP" });
-  const routerRtpCapabilities = response.data;
+  const offerHandler = async function(err, sdpOffer) {
+    const response = await socketRequest({ type: "START_PRESENTER", sdpOffer: sdpOffer });
+    const sdpAnswer = response.data;
 
-  console.log("[server] mediasoup router created");
+    await peer.processAnswer(sdpAnswer);
+  };
 
-  let device = null;
-  try {
-    device = new MediasoupClient.Device();
-  } catch (err) {
-    console.error(err);
-    return;
-  }
-  global.mediasoup.device = device;
+  const onIceCandidate = async function(candidate) {
+    await socketRequest({ type: "ICE_CANDIDATE", candidate: candidate });
+  };
 
-  try {
-    await device.load({ routerRtpCapabilities });
-  } catch (err) {
-    console.error(err);
-    return;
-  }
+  const options = {
+    localVideo: ui.localVideo,
+    remoteVideo: ui.remoteVideo,
+    mediaConstraints: {
+      audio: true,
+      video: {
+        width: {min: 640, ideal: 800, max: 1080},
+        height: {min: 480, ideal: 600, max: 810},
+        frameRate: 30,
+      },
+    },
+    onicecandidate: onIceCandidate,
+  };
 
-  console.log(
-    "mediasoup device created, handlerName: %s, use audio: %s, use video: %s",
-    device.handlerName,
-    device.canProduce("audio"),
-    device.canProduce("video")
-  );
+  const peer = await KurentoUtils.WebRtcPeer.WebRtcPeerSendrecv(options, async function(e){
+    global.kurento.peer = peer;
 
-  // Uncomment for debug
-  // console.log("rtpCapabilities: %s", JSON.stringify(device.rtpCapabilities, null, 2));
+    await peer.generateOffer(offerHandler);
+  });
 }
 
 // ----
 
-async function startWebrtcSend() {
-  const device = global.mediasoup.device;
-  const socket = global.server.socket;
-
-  // mediasoup WebRTC transport
-  // --------------------------
-
-  const socketRequest = SocketPromise(socket);
-  const response = await socketRequest({ type: "WEBRTC_RECV_START" });
-  const webrtcTransportOptions = response.data;
-
-  console.log("[server] WebRTC RECV transport created");
-
-  let transport;
-  try {
-    transport = await device.createSendTransport(webrtcTransportOptions);
-  } catch (err) {
-    console.error(err);
-    return;
-  }
-  global.mediasoup.webrtc.sendTransport = transport;
-
-  console.log("[client] WebRTC SEND transport created");
-
-  transport.on("connect", ({ dtlsParameters }, callback, _errback) => {
-    // Signal local DTLS parameters to the server side transport
-    socket.emit("WEBRTC_RECV_CONNECT", dtlsParameters);
-    callback();
-  });
-
-  transport.on("produce", (produceParameters, callback, _errback) => {
-    socket.emit("WEBRTC_RECV_PRODUCE", produceParameters, (producerId) => {
-      console.log("[server] WebRTC RECV producer created");
-      callback({ producerId });
-    });
-  });
-
-  // mediasoup WebRTC producer
-  // -------------------------
-
-  // Get user media as required
-
-  let useAudio = false;
-  let useVideo = true;
-
-  let stream;
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      audio: useAudio,
-      video: useVideo,
-    });
-  } catch (err) {
-    console.error(err);
-    return;
-  }
-
-  ui.localVideo.srcObject = stream;
-
-  // Start mediasoup-client's WebRTC producer(s)
-
-  if (useAudio) {
-    const audioTrack = stream.getAudioTracks()[0];
-    const audioProducer = await transport.produce({ track: audioTrack });
-    global.mediasoup.webrtc.audioProducer = audioProducer;
-  }
-
-  if (useVideo) {
-    const videoTrack = stream.getVideoTracks()[0];
-    const videoProducer = await transport.produce({
-      track: videoTrack,
-      ...CONFIG.mediasoup.client.videoProducer,
-    });
-    global.mediasoup.webrtc.videoProducer = videoProducer;
-  }
+async function addIceCandidate(peer, candidate) {
+  await peer.addIceCandidate(candidate);
 }
 
 // ----------------------------------------------------------------------------
@@ -255,64 +196,6 @@ async function connectKurento() {
   const socketRequest = SocketPromise(socket);
   await socketRequest({ type: "START_KURENTO", enableSrtp: enableSrtp });
   await startWebrtcRecv();
-}
-
-// ----
-
-async function startWebrtcRecv() {
-  const socket = global.server.socket;
-  const device = global.mediasoup.device;
-
-  // mediasoup WebRTC transport
-  // --------------------------
-
-  const socketRequest = SocketPromise(socket);
-  let response = await socketRequest({ type: "WEBRTC_SEND_START" });
-  const webrtcTransportOptions = response.data;
-
-  console.log("[server] WebRTC SEND transport created");
-
-  const transport = await device.createRecvTransport(webrtcTransportOptions);
-  global.mediasoup.webrtc.recvTransport = transport;
-
-  console.log("[client] WebRTC RECV transport created");
-
-  transport.on("connect", ({ dtlsParameters }, callback, _errback) => {
-    // Signal local DTLS parameters to the server side transport
-    socket.emit("WEBRTC_SEND_CONNECT", dtlsParameters);
-    callback();
-  });
-
-  // mediasoup WebRTC consumer
-  // -------------------------
-
-  response = await socketRequest({
-    type: "WEBRTC_SEND_CONSUME",
-    rtpCapabilities: device.rtpCapabilities,
-  });
-  const webrtcConsumerOptions = response.data;
-
-  console.log("[server] WebRTC SEND consumer created");
-
-  let useAudio = false;
-  let useVideo = true;
-
-  // Start mediasoup-client's WebRTC consumer(s)
-
-  const stream = new MediaStream();
-  ui.remoteVideo.srcObject = stream;
-
-  if (useAudio) {
-    // ...
-  }
-
-  if (useVideo) {
-    const consumer = await transport.consume(webrtcConsumerOptions);
-    global.mediasoup.webrtc.videoConsumer = consumer;
-    stream.addTrack(consumer.track);
-
-    console.log("[client] WebRTC RECV consumer created");
-  }
 }
 
 // ----------------------------------------------------------------------------

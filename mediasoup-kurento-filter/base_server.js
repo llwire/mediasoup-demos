@@ -62,12 +62,6 @@ const global = {
     client: null,
     pipeline: null,
     filter: null,
-    candidatesQueue: null,
-
-    rtc: {
-      recvEndpoint: null,
-      sendEndpoint: null,
-    },
 
     // RTP connection with mediasoup
     rtp: {
@@ -160,8 +154,6 @@ const global = {
     socket.on("WEBRTC_RECV_PRODUCE", handleWebrtcRecvProduce);
     socket.on("WEBRTC_SEND_CONNECT", handleWebrtcSendConnect);
     socket.on("DEBUG", handleDebug);
-
-    startKurento();
   });
 }
 
@@ -169,17 +161,13 @@ const global = {
 
 async function handleRequest(request, callback) {
   let responseData = null;
-  // console.log('Request', request)
 
   switch (request.type) {
     case "START_MEDIASOUP":
-      await handleStartMediasoup();
+      responseData = await handleStartMediasoup();
       break;
     case "START_KURENTO":
       await handleStartKurento(request.enableSrtp);
-      break;
-    case "START_PRESENTER":
-      responseData = await handleStartPresenter(request);
       break;
     case "WEBRTC_RECV_START":
       responseData = await handleWebrtcRecvStart();
@@ -190,11 +178,8 @@ async function handleRequest(request, callback) {
     case "WEBRTC_SEND_CONSUME":
       responseData = await handleWebrtcSendConsume(request.rtpCapabilities);
       break;
-    case "ICE_CANDIDATE":
-      await onIceCandidate(request);
-      break;
     default:
-      console.warn("Invalid request type:", request.type, request);
+      console.warn("Invalid request type:", request.type);
       break;
   }
 
@@ -435,23 +420,17 @@ async function handleStartKurento(enableSrtp) {
 
 // ----
 
-async function handleStartPresenter({ sdpOffer }) {
-  return await startKurentoSenderEndpoint(sdpOffer);
-}
-
-// ----
-
 async function startKurento() {
   const kurentoUrl = `ws://${CONFIG.kurento.ip}:${CONFIG.kurento.port}${CONFIG.kurento.wsPath}`;
   console.log("Connect with Kurento Media Server:", kurentoUrl);
 
-  const kmsClient = global.kurento.client || new KurentoClient(kurentoUrl);
+  const kmsClient = new KurentoClient(kurentoUrl);
   global.kurento.client = kmsClient;
   console.log("Kurento client connected");
 
-  const kmsPipeline = global.kurento.pipeline || await kmsClient.create("MediaPipeline");
+  const kmsPipeline = await kmsClient.create("MediaPipeline");
   global.kurento.pipeline = kmsPipeline;
-  console.log("Kurento pipeline created", kmsPipeline.id);
+  console.log("Kurento pipeline created");
 }
 
 // ----
@@ -513,49 +492,6 @@ function getRtcpParameters(sdpObject, kind) {
   const reducedSize = "rtcpRsize" in mediaObject;
 
   return { cname: cname, reducedSize: reducedSize };
-}
-
-// ----------------------------------------------------------------------------
-
-async function startKurentoSenderEndpoint(sdpOffer) {
-  const pipeline = global.kurento.pipeline;
-  const rtcEndpoint = await pipeline.create('WebRtcEndpoint');
-  const passThrough = await pipeline.create('PassThrough');
-  const candidatesQueue = global.kurento.candidatesQueue;
-
-  rtcEndpoint.on('OnIceCandidate', ({ candidate }) => {
-    const socket = global.server.socket;
-    const parsedCandidate = KurentoClient.getComplexType('IceCandidate')(candidate);
-
-    console.log('Sending ICE candidate ...')
-    socket.emit('ICE_CANDIDATE', parsedCandidate);
-  });
-
-  global.kurento.rtc.sendEndpoint = rtcEndpoint;
-  if (candidatesQueue) {
-    while(candidatesQueue.length) {
-      const candidate = candidatesQueue.shift();
-      rtcEndpoint.addIceCandidate(candidate);
-    }
-  }
-  console.log('Connecting media elements ...');
-  rtcEndpoint.connect(rtcEndpoint);
-
-  const sdpAnswer = await rtcEndpoint.processOffer(sdpOffer);
-  const gathered = await rtcEndpoint.gatherCandidates();
-  console.log("Answer", sdpAnswer);
-
-  return sdpAnswer;
-}
-
-function onIceCandidate({ candidate }) {
-  console.log('Handling candidates ...')
-  var parsedCandidate = KurentoClient.getComplexType('IceCandidate')(candidate);
-
-  if (!global.kurento.candidatesQueue) {
-    global.kurento.candidatesQueue = [];
-  }
-  global.kurento.candidatesQueue.push(parsedCandidate);
 }
 
 // ----------------------------------------------------------------------------
