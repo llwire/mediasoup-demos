@@ -850,7 +850,7 @@ async function startKurentoRtpProducer(enableSrtp) {
     // There is no need to `connect()` this transport: with COMEDIA enabled,
     // mediasoup waits until Kurento starts sending RTP, to detect Kurento's
     // outbound RTP and RTCP ports.
-    comedia: true,
+    comedia: false,
 
     // Kurento RtpEndpoint doesn't support RTP/RTCP multiplexing ("a=rtcp-mux" in SDP)
     rtcpMux: false,
