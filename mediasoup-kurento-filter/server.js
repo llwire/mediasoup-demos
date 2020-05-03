@@ -906,7 +906,7 @@ async function startKurentoRtpProducer(enableSrtp) {
 
   // When sending to mediasoup, we can choose our own identifiers;
   // we choose the defaults from mediasoup just for convenience
-  const sdpPayloadType = getMsPayloadType("video/VP8");
+  const sdpPayloadType = getMsPayloadType("video/H264");
   const sdpHeaderExtId = getMsHeaderExtId("video", "abs-send-time");
 
   const sdpListenIp = '127.0.0.1'; //msTransport.tuple.localIp;
@@ -945,7 +945,7 @@ async function startKurentoRtpProducer(enableSrtp) {
     "a=recvonly\r\n" +
     `a=rtcp:${sdpListenPortRtcp}\r\n` +
     `${sdpCryptoLine}` +
-    `a=rtpmap:${sdpPayloadType} VP8/90000\r\n` +
+    `a=rtpmap:${sdpPayloadType} H264/90000\r\n` +
     `a=rtcp-fb:${sdpPayloadType} goog-remb\r\n` +
     `a=rtcp-fb:${sdpPayloadType} ccm fir\r\n` +
     `a=rtcp-fb:${sdpPayloadType} nack\r\n` +
@@ -962,8 +962,9 @@ async function startKurentoRtpProducer(enableSrtp) {
   global.kurento.rtc.sendEndpoint.connect(kmsRtpEndpoint);
 
   console.log("SDP Offer from App to Kurento RTP SEND:\n%s", kmsSdpOffer);
-  const kmsSdpAnswer = await kmsRtpEndpoint.processOffer(kmsSdpOffer);
+  const kmsSdpAnswer = await global.kurento.rtp.sendEndpoint.processOffer(kmsSdpOffer);
   console.log("SDP Answer from Kurento RTP SEND to App:\n%s", kmsSdpAnswer);
+  await kmsRtpEndpoint.processAnswer(kmsSdpAnswer);
 
   // NOTE: A real application would need to parse this SDP Answer and adapt to
   // the parameters given in it, following the SDP Offer/Answer Model.
