@@ -962,9 +962,9 @@ async function startKurentoRtpProducer(enableSrtp) {
   global.kurento.rtc.sendEndpoint.connect(kmsRtpEndpoint);
 
   console.log("SDP Offer from App to Kurento RTP SEND:\n%s", kmsSdpOffer);
-  const kmsSdpAnswer = await global.kurento.rtp.sendEndpoint.processOffer(kmsSdpOffer);
+  const kmsSdpAnswer = await kmsRtpEndpoint.processOffer(kmsSdpOffer);
   console.log("SDP Answer from Kurento RTP SEND to App:\n%s", kmsSdpAnswer);
-  await kmsRtpEndpoint.processAnswer(kmsSdpAnswer);
+  await global.kurento.rtp.sendEndpoint.processAnswer(kmsSdpAnswer);
 
   // NOTE: A real application would need to parse this SDP Answer and adapt to
   // the parameters given in it, following the SDP Offer/Answer Model.
