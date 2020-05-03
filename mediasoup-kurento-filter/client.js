@@ -51,7 +51,7 @@ const ui = {
 
   // <button>
   startWebRTC: document.getElementById("uiStartWebRTC"),
-  connectKurento: document.getElementById("uiConnectKurento"),
+  startCast: document.getElementById("uiStartCast"),
   debug: document.getElementById("uiDebug"),
 
   // <video>
@@ -61,7 +61,7 @@ const ui = {
 
 ui.startWebRTC.onclick = startWebRTC;
 // ui.startWebRTC.onclick = startPresenterStream;
-ui.connectKurento.onclick = connectKurento;
+ui.startCast.onclick = startCast;
 ui.debug.onclick = () => {
   if (global.server.socket) {
     global.server.socket.emit("DEBUG");
@@ -115,10 +115,8 @@ function connectSocket() {
     ui.console.scrollTop = ui.console.scrollHeight;
   });
 
-  socket.on("WEBRTC_RECV_PRODUCER_READY", (kind) => {
-    console.log(`Server producer is ready, kind: ${kind}`);
-
-    ui.connectKurento.disabled = false;
+  socket.on("CAST_READY", () => {
+    ui.startCast.disabled = false;
     ui.debug.disabled = false;
   });
 
@@ -180,7 +178,7 @@ async function addIceCandidate(peer, candidate) {
 
 // ----------------------------------------------------------------------------
 
-async function connectKurento() {
+async function startCast() {
   const socket = global.server.socket;
 
   // Start an (S)RTP transport as required
@@ -194,8 +192,7 @@ async function connectKurento() {
   }
 
   const socketRequest = SocketPromise(socket);
-  await socketRequest({ type: "START_KURENTO", enableSrtp: enableSrtp });
-  await startWebrtcRecv();
+  await socketRequest({ type: "START_CAST", enableSrtp: enableSrtp });
 }
 
 // ----------------------------------------------------------------------------

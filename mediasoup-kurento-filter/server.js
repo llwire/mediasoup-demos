@@ -179,6 +179,9 @@ async function handleRequest(request, callback) {
     case "START_PRESENTER":
       responseData = await handleStartPresenter(request);
       break;
+    case "START_CAST":
+      await handleStartCast(false);
+      break;
     case "WEBRTC_RECV_START":
       responseData = await handleWebrtcRecvStart();
       break;
@@ -399,13 +402,19 @@ async function handleStartKurento(enableSrtp) {
   await startKurentoFilter();
 }
 
-// ----
+// ----------------------------------------------------------------------------
 
 async function handleStartPresenter({ sdpOffer }) {
   return await startKurentoSenderEndpoint(sdpOffer);
 }
 
 // ----
+
+async function handleStartCast(enableSrt) {
+  await startKurentoRtpProducer(enableSrt);
+}
+
+// ----------------------------------------------------------------------------
 
 async function startKurento() {
   const kurentoUrl = `ws://${CONFIG.kurento.ip}:${CONFIG.kurento.port}${CONFIG.kurento.wsPath}`;
@@ -516,13 +525,13 @@ function getRtcpParameters(sdpObject, kind) {
 // ----------------------------------------------------------------------------
 
 async function startKurentoSenderEndpoint(sdpOffer) {
+  const socket = global.server.socket;
   const pipeline = global.kurento.pipeline;
   const rtcEndpoint = await pipeline.create('WebRtcEndpoint');
   const passThrough = await pipeline.create('PassThrough');
   const candidatesQueue = global.kurento.candidatesQueue;
 
   rtcEndpoint.on('OnIceCandidate', ({ candidate }) => {
-    const socket = global.server.socket;
     const parsedCandidate = KurentoClient.getComplexType('IceCandidate')(candidate);
 
     console.log('Sending ICE candidate ...')
@@ -543,6 +552,7 @@ async function startKurentoSenderEndpoint(sdpOffer) {
   const gathered = await rtcEndpoint.gatherCandidates();
   console.log("Answer", sdpAnswer);
 
+  socket.emit("CAST_READY");
   return sdpAnswer;
 }
 
