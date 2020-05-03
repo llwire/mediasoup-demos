@@ -162,6 +162,7 @@ const global = {
     socket.on("DEBUG", handleDebug);
 
     startKurento();
+    startMediasoup();
   });
 }
 
@@ -172,9 +173,6 @@ async function handleRequest(request, callback) {
   // console.log('Request', request)
 
   switch (request.type) {
-    case "START_MEDIASOUP":
-      await handleStartMediasoup();
-      break;
     case "START_KURENTO":
       await handleStartKurento(request.enableSrtp);
       break;
@@ -199,38 +197,6 @@ async function handleRequest(request, callback) {
   }
 
   callback({ type: request.type, data: responseData });
-}
-
-// ----------------------------------------------------------------------------
-
-// Creates a mediasoup worker and router
-
-async function handleStartMediasoup() {
-  const worker = await Mediasoup.createWorker(CONFIG.mediasoup.worker);
-  global.mediasoup.worker = worker;
-
-  worker.on("died", () => {
-    console.error(
-      "mediasoup worker died, exit in 3 seconds... [pid:%d]",
-      worker.pid
-    );
-    setTimeout(() => process.exit(1), 3000);
-  });
-
-  console.log("mediasoup worker created [pid:%d]", worker.pid);
-
-  const router = await worker.createRouter(CONFIG.mediasoup.router);
-  global.mediasoup.router = router;
-
-  // At this point, the computed "router.rtpCapabilities" includes the
-  // router codecs enhanced with retransmission and RTCP capabilities,
-  // and the list of RTP header extensions supported by mediasoup.
-
-  console.log("mediasoup router created");
-
-  console.log("mediasoup router RtpCapabilities: %O", router.rtpCapabilities);
-
-  return router.rtpCapabilities;
 }
 
 // ----------------------------------------------------------------------------
@@ -452,6 +418,38 @@ async function startKurento() {
   const kmsPipeline = global.kurento.pipeline || await kmsClient.create("MediaPipeline");
   global.kurento.pipeline = kmsPipeline;
   console.log("Kurento pipeline created", kmsPipeline.id);
+}
+
+// ----------------------------------------------------------------------------
+
+// Creates a mediasoup worker and router
+
+async function startMediasoup() {
+  const worker = await Mediasoup.createWorker(CONFIG.mediasoup.worker);
+  global.mediasoup.worker = worker;
+
+  worker.on("died", () => {
+    console.error(
+      "mediasoup worker died, exit in 3 seconds... [pid:%d]",
+      worker.pid
+    );
+    setTimeout(() => process.exit(1), 3000);
+  });
+
+  console.log("mediasoup worker created [pid:%d]", worker.pid);
+
+  const router = await worker.createRouter(CONFIG.mediasoup.router);
+  global.mediasoup.router = router;
+
+  // At this point, the computed "router.rtpCapabilities" includes the
+  // router codecs enhanced with retransmission and RTCP capabilities,
+  // and the list of RTP header extensions supported by mediasoup.
+
+  console.log("mediasoup router created");
+
+  console.log("mediasoup router RtpCapabilities: %O", router.rtpCapabilities);
+
+  return router.rtpCapabilities;
 }
 
 // ----
@@ -952,6 +950,9 @@ async function startKurentoRtpProducer(enableSrtp) {
   // Set maximum bitrate higher than default of 500 kbps
   await kmsRtpEndpoint.setMaxVideoSendBandwidth(2000); // Send max 2 mbps
 
+  // Connect RTC to RTP
+  global.kurento.rtc.sendEndpoint.connect(kmsRtpEndpoint);
+
   console.log("SDP Offer from App to Kurento RTP SEND:\n%s", kmsSdpOffer);
   const kmsSdpAnswer = await kmsRtpEndpoint.processOffer(kmsSdpOffer);
   console.log("SDP Answer from Kurento RTP SEND to App:\n%s", kmsSdpAnswer);
@@ -1037,22 +1038,6 @@ async function startKurentoRtpProducer(enableSrtp) {
       srtpParameters: srtpParameters,
     });
   }
-}
-
-// ----------------------------------------------------------------------------
-
-async function startKurentoFilter() {
-  const kmsPipeline = global.kurento.pipeline;
-  const recvEndpoint = global.kurento.rtp.recvEndpoint;
-  const sendEndpoint = global.kurento.rtp.sendEndpoint;
-
-  // const filter = await kmsPipeline.create("GStreamerFilter", {
-  //   command: "videobalance saturation=0.0",
-  // });
-  // global.kurento.filter = filter;
-
-  await recvEndpoint.connect(sendEndpoint);
-  // await filter.connect(sendEndpoint);
 }
 
 // ----------------------------------------------------------------------------
