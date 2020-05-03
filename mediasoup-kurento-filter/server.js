@@ -942,7 +942,8 @@ async function startKurentoRtpProducer(enableSrtp) {
     "t=0 0\r\n" +
     `m=video ${sdpListenPort} ${sdpProtocol} ${sdpPayloadType}\r\n` +
     `a=extmap:${sdpHeaderExtId} http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\n` +
-    "a=recvonly\r\n" +
+    "a=sendonly\r\n" +
+    "a=direction:active\r\n" + // Comedia enabled
     `a=rtcp:${sdpListenPortRtcp}\r\n` +
     `${sdpCryptoLine}` +
     `a=rtpmap:${sdpPayloadType} H264/90000\r\n` +
@@ -959,7 +960,7 @@ async function startKurentoRtpProducer(enableSrtp) {
   await kmsRtpEndpoint.setMaxVideoSendBandwidth(2000); // Send max 2 mbps
 
   // Connect RTC to RTP
-  global.kurento.rtc.sendEndpoint.connect(kmsRtpEndpoint);
+  kmsRtpEndpoint.connect(global.kurento.rtc.sendEndpoint);
 
   console.log("SDP Offer from App to Kurento RTP SEND:\n%s", kmsSdpOffer);
   const kmsSdpAnswer = await kmsRtpEndpoint.processOffer(kmsSdpOffer);
