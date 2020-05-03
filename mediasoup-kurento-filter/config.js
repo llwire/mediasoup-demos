@@ -51,6 +51,12 @@ module.exports = {
           preferredPayloadType: 96,
           clockRate: 90000,
         },
+        {
+          kind: "video",
+          mimeType: "video/H264",
+          preferredPayloadType: 102,
+          clockRate: 90000,
+        },
       ],
     },
 
