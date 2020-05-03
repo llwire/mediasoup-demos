@@ -7,7 +7,7 @@ gst-launch-1.0 -em \
   flvmux name=mux streamable=true ! rtmpsink sync=false location=rtmp://live-yto.twitch.tv/app/live_507689543_JmLNgzrtwMMnnmQQNeltKKqVFRTSMq
 
 
-PEER_V=5076 PEER_IP=127.0.0.1 \
+PEER_V=36120 PEER_IP=172.31.38.151 \
 SELF_V=10002 \
 CAPS_V="media=(string)video,clock-rate=(int)90000,encoding-name=(string)H264,payload=(int)103" \
 bash -c 'gst-launch-1.0 -em \

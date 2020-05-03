@@ -856,7 +856,7 @@ async function startKurentoRtpProducer(enableSrtp) {
   const sdpListenPort = '10002'; //msTransport.tuple.localPort;
   const sdpListenPortRtcp = '10003'; //msTransport.rtcpTuple.localPort;
 
-  let sdpProtocol = "RTP/AVPF";
+  let sdpProtocol = "RTP/AVP";
   let sdpCryptoLine = "";
   let kmsCrypto = undefined;
 
@@ -872,13 +872,13 @@ async function startKurentoRtpProducer(enableSrtp) {
     `a=extmap:${sdpHeaderExtId} http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\n` +
     "a=recvonly\r\n" +
     "a=direction:active\r\n" + // Comedia enabled
-    `a=rtcp:${sdpListenPortRtcp}\r\n` +
+    // `a=rtcp:${sdpListenPortRtcp}\r\n` +
     `${sdpCryptoLine}` +
     `a=rtpmap:${sdpPayloadType} H264/90000\r\n` +
-    `a=rtcp-fb:${sdpPayloadType} goog-remb\r\n` +
-    `a=rtcp-fb:${sdpPayloadType} ccm fir\r\n` +
-    `a=rtcp-fb:${sdpPayloadType} nack\r\n` +
-    `a=rtcp-fb:${sdpPayloadType} nack pli\r\n` +
+    // `a=rtcp-fb:${sdpPayloadType} goog-remb\r\n` +
+    // `a=rtcp-fb:${sdpPayloadType} ccm fir\r\n` +
+    // `a=rtcp-fb:${sdpPayloadType} nack\r\n` +
+    // `a=rtcp-fb:${sdpPayloadType} nack pli\r\n` +
     "";
 
   // Set maximum bitrate higher than default of 500 kbps
