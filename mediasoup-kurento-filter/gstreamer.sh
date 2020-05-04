@@ -4,6 +4,17 @@ gst-launch-1.0 -em \
     rtpbin. ! queue ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! voaacenc ! mux. \
   flvmux name=mux streamable=true ! rtmpsink sync=false location=$RTMP_DEST
 
+  gst-launch-1.0 \
+      filesrc location=out.sdp \
+      ! sdpdemux timeout=0 ! queue \
+      ! rtph264depay ! h264parse ! avdec_h264 \
+      ! videoconvert flvmux name=mux streamable=true ! rtmpsink sync=false location=$RTMP_DEST
+
+      gst-launch-1.0 \
+          filesrc location=out.sdp \
+          ! sdpdemux timeout=0 ! queue \
+          ! rtph264depay ! h264parse ! mux. \
+          flvmux name=mux streamable=true ! rtmpsink sync=false location=$RTMP_DEST
 
 
   udpsrc port=10002 caps="application/x-rtp,media=(string)video,clock-rate=(int)90000,encoding-name=(string)H264" ! rtpbin.recv_rtp_sink_1 \

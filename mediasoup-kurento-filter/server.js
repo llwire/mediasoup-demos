@@ -284,6 +284,13 @@ async function startKurentoRtpProducer(enableSrtp) {
   // prettier-ignore
   // `a=extmap:${sdpHeaderExtId} http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\n` +
 
+  // "a=direction:active\r\n" + // Comedia enabled
+  // `a=rtcp:${sdpListenPortRtcp}\r\n` +
+  // `a=rtcp-fb:${sdpPayloadType} goog-remb\r\n` +
+  // `a=rtcp-fb:${sdpPayloadType} ccm fir\r\n` +
+  // `a=rtcp-fb:${sdpPayloadType} nack\r\n` +
+  // `a=rtcp-fb:${sdpPayloadType} nack pli\r\n` +
+
   const kmsSdpOffer =
     "v=0\r\n" +
     `o=- 0 0 IN IP4 ${sdpListenIp}\r\n` +
@@ -292,13 +299,7 @@ async function startKurentoRtpProducer(enableSrtp) {
     "t=0 0\r\n" +
     `m=video ${sdpListenPort} ${sdpProtocol} ${sdpPayloadType}\r\n` +
     "a=recvonly\r\n" +
-    "a=direction:active\r\n" + // Comedia enabled
-    `a=rtcp:${sdpListenPortRtcp}\r\n` +
     `a=rtpmap:${sdpPayloadType} H264/90000\r\n` +
-    `a=rtcp-fb:${sdpPayloadType} goog-remb\r\n` +
-    `a=rtcp-fb:${sdpPayloadType} ccm fir\r\n` +
-    `a=rtcp-fb:${sdpPayloadType} nack\r\n` +
-    `a=rtcp-fb:${sdpPayloadType} nack pli\r\n` +
     `a=fmtp:${sdpPayloadType} level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42001f\r\n` +
     "";
 
