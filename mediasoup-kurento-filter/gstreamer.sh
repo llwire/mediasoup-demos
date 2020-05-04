@@ -2,10 +2,15 @@ gst-launch-1.0 -em \
   rtpbin name=rtpbin latency=5 \
   udpsrc port=10000 caps="application/x-rtp,media=(string)audio,clock-rate=(int)48000,encoding-name=(string)OPUS" ! rtpbin.recv_rtp_sink_0 \
     rtpbin. ! queue ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! voaacenc ! mux. \
-  udpsrc port=10002 caps="application/x-rtp,media=(string)video,clock-rate=(int)90000,encoding-name=(string)H264" ! rtpbin.recv_rtp_sink_1 \
-    rtpbin. ! queue ! rtph264depay ! h264parse ! mux. \
   flvmux name=mux streamable=true ! rtmpsink sync=false location=$RTMP_DEST
 
+
+
+  udpsrc port=10002 caps="application/x-rtp,media=(string)video,clock-rate=(int)90000,encoding-name=(string)H264" ! rtpbin.recv_rtp_sink_1 \
+    rtpbin. ! queue ! rtph264depay ! h264parse ! mux. \
+
+  udpsrc port=10000 caps="application/x-rtp,media=(string)audio,clock-rate=(int)48000,encoding-name=(string)OPUS" ! rtpbin.recv_rtp_sink_0 \
+    rtpbin. ! queue ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! voaacenc ! mux. \
 
 PEER_V=36120 PEER_IP=172.31.38.151 \
 SELF_V=10002 \

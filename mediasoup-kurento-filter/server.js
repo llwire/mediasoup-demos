@@ -240,6 +240,7 @@ async function startKurentoSenderEndpoint(sdpOffer) {
   }
   console.log('Connecting media elements ...');
   rtcEndpoint.connect(rtpEndpoint);
+  rtcEndpoint.connect(rtcEndpoint);
 
   const sdpAnswer = await rtcEndpoint.processOffer(sdpOffer);
   const gathered = await rtcEndpoint.gatherCandidates();
@@ -270,8 +271,8 @@ async function startKurentoRtpProducer(enableSrtp) {
 
   // When sending to mediasoup, we can choose our own identifiers;
   // we choose the defaults from mediasoup just for convenience
-  const sdpPayloadType = 102; // getMsPayloadType("video/H264");
   // const sdpHeaderExtId = getMsHeaderExtId("video", "abs-send-time");
+  const sdpPayloadType = 102; // getMsPayloadType("video/H264");
 
   const sdpListenIp = '127.0.0.1'; //msTransport.tuple.localIp;
   const sdpListenPort = '10002'; //msTransport.tuple.localPort;
