@@ -270,7 +270,7 @@ async function startKurentoRtpProducer(enableSrtp) {
 
   // When sending to mediasoup, we can choose our own identifiers;
   // we choose the defaults from mediasoup just for convenience
-  const sdpPayloadType = 124; // getMsPayloadType("video/H264");
+  const sdpPayloadType = 102; // getMsPayloadType("video/H264");
   // const sdpHeaderExtId = getMsHeaderExtId("video", "abs-send-time");
 
   const sdpListenIp = '127.0.0.1'; //msTransport.tuple.localIp;
@@ -298,6 +298,7 @@ async function startKurentoRtpProducer(enableSrtp) {
     `a=rtcp-fb:${sdpPayloadType} ccm fir\r\n` +
     `a=rtcp-fb:${sdpPayloadType} nack\r\n` +
     `a=rtcp-fb:${sdpPayloadType} nack pli\r\n` +
+    `a=fmtp:${sdpPayloadType} level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42001f\r\n` +
     "";
 
   // Set maximum bitrate higher than default of 500 kbps
