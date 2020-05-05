@@ -300,6 +300,11 @@ async function startKurentoRtpProducer(enableSrtp) {
     `m=video ${sdpListenPort} ${sdpProtocol} ${sdpPayloadType}\r\n` +
     "a=recvonly\r\n" +
     `a=rtpmap:${sdpPayloadType} H264/90000\r\n` +
+    `a=rtcp:${sdpListenPortRtcp}\r\n` +
+    `a=rtcp-fb:${sdpPayloadType} goog-remb\r\n` +
+    `a=rtcp-fb:${sdpPayloadType} ccm fir\r\n` +
+    `a=rtcp-fb:${sdpPayloadType} nack\r\n` +
+    `a=rtcp-fb:${sdpPayloadType} nack pli\r\n` +
     `a=fmtp:${sdpPayloadType} level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42001f\r\n` +
     "";
 
