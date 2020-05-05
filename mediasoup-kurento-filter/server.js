@@ -271,41 +271,55 @@ async function startKurentoRtpProducer(enableSrtp) {
 
   // When sending to mediasoup, we can choose our own identifiers;
   // we choose the defaults from mediasoup just for convenience
-  // const sdpHeaderExtId = getMsHeaderExtId("video", "abs-send-time");
-  const sdpPayloadType = 102; // getMsPayloadType("video/H264");
+  const sdpVideoPayloadType = 102;
+  const sdpHeaderExtId = 2;
 
-  const sdpListenIp = '127.0.0.1'; //msTransport.tuple.localIp;
-  const sdpListenPort = '10002'; //msTransport.tuple.localPort;
-  const sdpListenPortRtcp = '10003'; //msTransport.rtcpTuple.localPort;
+  const sdpListenIp = '127.0.0.1';
+  const sdpVideoListenPort = '10002';
+  const sdpListenPortRtcp = '10003';
 
   let sdpProtocol = "RTP/AVP";
 
+  const sdp = {
+    listenIp: '127.0.0.1',
+    headerExtensionId: 2,
+    protocol: 'RTP/AVP',
+    audio: {
+      listenPort: 10000,
+      listenPortRtcp: 10001,
+      payloadType: 111,
+    },
+    video: {
+      listenPort: 10002,
+      listenPortRtcp: 10003,
+      payloadType: 102,
+    },
+  }
+
   // SDP Offer for Kurento RtpEndpoint
   // prettier-ignore
-  // `a=extmap:${sdpHeaderExtId} http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\n` +
-
-  // "a=direction:active\r\n" + // Comedia enabled
-  // `a=rtcp:${sdpListenPortRtcp}\r\n` +
-  // `a=rtcp-fb:${sdpPayloadType} goog-remb\r\n` +
-  // `a=rtcp-fb:${sdpPayloadType} ccm fir\r\n` +
-  // `a=rtcp-fb:${sdpPayloadType} nack\r\n` +
-  // `a=rtcp-fb:${sdpPayloadType} nack pli\r\n` +
-
   const kmsSdpOffer =
     "v=0\r\n" +
-    `o=- 0 0 IN IP4 ${sdpListenIp}\r\n` +
+    `o=- 0 0 IN IP4 ${sdp.listenIp}\r\n` +
     "s=-\r\n" +
-    `c=IN IP4 ${sdpListenIp}\r\n` +
+    `c=IN IP4 ${sdp.listenIp}\r\n` +
     "t=0 0\r\n" +
-    `m=video ${sdpListenPort} ${sdpProtocol} ${sdpPayloadType}\r\n` +
+
+    // audio
+    `m=audio ${sdp.audio.listenPort} ${sdp.protocol} ${sdp.audio.payloadType}\r\n` +
+    `a=extmap:${sdp.headerExtId} http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\n` +
     "a=recvonly\r\n" +
-    `a=rtpmap:${sdpPayloadType} H264/90000\r\n` +
-    `a=rtcp:${sdpListenPortRtcp}\r\n` +
-    `a=rtcp-fb:${sdpPayloadType} goog-remb\r\n` +
-    `a=rtcp-fb:${sdpPayloadType} ccm fir\r\n` +
-    `a=rtcp-fb:${sdpPayloadType} nack\r\n` +
-    `a=rtcp-fb:${sdpPayloadType} nack pli\r\n` +
-    `a=fmtp:${sdpPayloadType} level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42001f\r\n` +
+    `a=rtpmap:${sdp.audio.payloadType} H264/90000\r\n` +
+    `a=rtcp:${sdp.audio.listenPortRtcp}\r\n` +
+    `a=fmtp:${sdp.audio.payloadType} minptime=10;useinbandfec=1\r\n` +
+
+    // video
+    `m=video ${sdp.video.listenPort} ${sdp.protocol} ${sdp.video.payloadType}\r\n` +
+    `a=extmap:${sdp.headerExtId} http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\n` +
+    "a=recvonly\r\n" +
+    `a=rtpmap:${sdp.video.payloadType} H264/90000\r\n` +
+    `a=rtcp:${sdp.video.listenPortRtcp}\r\n` +
+    `a=fmtp:${sdp.video.payloadType} level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42001f\r\n` +
     "";
 
   // Set maximum bitrate higher than default of 500 kbps
@@ -314,7 +328,6 @@ async function startKurentoRtpProducer(enableSrtp) {
   console.log("SDP Offer from App to Kurento RTP SEND:\n%s", kmsSdpOffer);
   const kmsSdpAnswer = await kmsRtpEndpoint.processOffer(kmsSdpOffer);
   console.log("SDP Answer from Kurento RTP SEND to App:\n%s", kmsSdpAnswer);
-
 }
 
 // ----------------------------------------------------------------------------
