@@ -310,7 +310,7 @@ async function startKurentoRtpProducer(enableSrtp) {
     `m=audio ${sdp.audio.listenPort} ${sdp.protocol} ${sdp.audio.payloadType}\r\n` +
     `a=extmap:${sdp.headerExtensionId} http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\n` +
     "a=recvonly\r\n" +
-    `a=rtpmap:${sdp.audio.payloadType} opus/48000\r\n` +
+    `a=rtpmap:${sdp.audio.payloadType} opus/48000/2\r\n` +
     `a=rtcp:${sdp.audio.listenPortRtcp}\r\n` +
     `a=fmtp:${sdp.audio.payloadType} minptime=10;useinbandfec=1\r\n` +
 
