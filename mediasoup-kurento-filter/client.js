@@ -142,6 +142,7 @@ async function startPresenterStream() {
     const response = await socketRequest({ type: "START_PRESENTER", sdpOffer: sdpOffer });
     const sdpAnswer = response.data;
 
+    console.log('sdp Answer', sdpAnswer);
     await peer.processAnswer(sdpAnswer);
   };
 
