@@ -242,6 +242,7 @@ async function startKurentoSenderEndpoint(sdpOffer) {
   rtcEndpoint.connect(rtpEndpoint);
   rtcEndpoint.connect(rtcEndpoint);
 
+  console.log('process sdp Offer', sdpOffer);
   const sdpAnswer = await rtcEndpoint.processOffer(sdpOffer);
   const gathered = await rtcEndpoint.gatherCandidates();
   console.log("Answer", sdpAnswer);
