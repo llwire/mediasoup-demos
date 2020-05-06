@@ -307,7 +307,7 @@ async function startKurentoRtpProducer(enableSrtp) {
 
     // audio
     `m=audio ${sdp.audio.listenPort} ${sdp.protocol} ${sdp.audio.payloadType}\r\n` +
-    `a=extmap:${sdp.headerExtId} http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\n` +
+    `a=extmap:${sdp.headerExtensionId} http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\n` +
     "a=recvonly\r\n" +
     `a=rtpmap:${sdp.audio.payloadType} opus/48000\r\n` +
     `a=rtcp:${sdp.audio.listenPortRtcp}\r\n` +
@@ -315,7 +315,7 @@ async function startKurentoRtpProducer(enableSrtp) {
 
     // video
     `m=video ${sdp.video.listenPort} ${sdp.protocol} ${sdp.video.payloadType}\r\n` +
-    `a=extmap:${sdp.headerExtId} http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\n` +
+    `a=extmap:${sdp.headerExtensionId} http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\n` +
     "a=recvonly\r\n" +
     `a=rtpmap:${sdp.video.payloadType} H264/90000\r\n` +
     `a=rtcp:${sdp.video.listenPortRtcp}\r\n` +

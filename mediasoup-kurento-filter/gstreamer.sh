@@ -12,10 +12,23 @@ gst-launch-1.0 -em \
 
       gst-launch-1.0 \
           filesrc location=out.sdp \
-          ! sdpdemux timeout=0 ! queue \
-          ! rtph264depay ! h264parse ! mux. \
+          ! sdpdemux name=sdpdm timeout=0 sdpdm.stream_1 ! queue ! rtph264depay ! h264parse ! mux. \
           flvmux name=mux streamable=true ! rtmpsink sync=false location=$RTMP_DEST
 
+        gst-launch-1.0 \
+            filesrc location=out.sdp ! sdpdemux name=sdpdm timeout=0 \
+            sdpdm.stream_0 ! rtpopusdepay ! opusdec ! audioconvert ! faac ! mux. \
+            flvmux name=mux streamable=true ! rtmpsink sync=false location=$RTMP_DEST
+
+            sdpdm.stream_0 ! rtpopusdepay ! opusdec ! audioconvert ! faac ! mux. \
+            sdpdm.stream_1 ! rtph264depay ! h264parse ! mux. \
+            sdpdm.stream_0 ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! voaacenc ! \
+
+          ! sdpdemux name=sdpdm0 timeout=0 sdpdm.stream_0 ! queue ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! voaacenc ! mux. \
+          filesrc location=out.sdp \
+
+          sdpdm.stream_0 ! queue ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! voaacenc ! mux. \
+          sdpdm.stream_1 ! queue ! rtph264depay ! h264parse ! mux. \
 
   udpsrc port=10002 caps="application/x-rtp,media=(string)video,clock-rate=(int)90000,encoding-name=(string)H264" ! rtpbin.recv_rtp_sink_1 \
     rtpbin. ! queue ! rtph264depay ! h264parse ! mux. \
