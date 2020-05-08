@@ -8,17 +8,11 @@ const Express = require("express");
 const Fs = require("fs");
 const Https = require("https");
 const KurentoClient = require("kurento-client");
-const Mediasoup = require("mediasoup");
-const MediasoupOrtc = require("mediasoup-client/lib/ortc");
-const MediasoupRtpUtils = require("mediasoup-client/lib/handlers/sdp/plainRtpUtils");
-const MediasoupSdpUtils = require("mediasoup-client/lib/handlers/sdp/commonUtils");
 const SdpTransform = require("sdp-transform");
 const SocketServer = require("socket.io");
 const Util = require("util");
-
-const CryptoSuiteKurento = "AES_128_CM_HMAC_SHA1_80";
-const CryptoSuiteMediasoup = "AES_CM_128_HMAC_SHA1_80";
-const CryptoSuiteSdp = "AES_CM_128_HMAC_SHA1_80";
+const Process = require("child_process");
+const Porter = require("./porter")();
 
 // ----------------------------------------------------------------------------
 
@@ -33,35 +27,14 @@ const global = {
     socketServer: null,
   },
 
-  mediasoup: {
-    worker: null,
-    router: null,
-
-    // WebRTC connection with the browser
-    webrtc: {
-      recvTransport: null,
-      audioProducer: null,
-      videoProducer: null,
-
-      sendTransport: null,
-      audioConsumer: null,
-      videoConsumer: null,
-    },
-
-    // RTP connection with Kurento
-    rtp: {
-      recvTransport: null,
-      recvProducer: null,
-
-      sendTransport: null,
-      sendConsumer: null,
-    },
+  gstreamer: {
+    process: null,
   },
 
   kurento: {
     client: null,
     pipeline: null,
-    filter: null,
+    capabilities: null,
     candidatesQueue: null,
 
     rtc: {
@@ -69,9 +42,7 @@ const global = {
       sendEndpoint: null,
     },
 
-    // RTP connection with mediasoup
     rtp: {
-      recvEndpoint: null,
       sendEndpoint: null,
     },
   },
@@ -154,11 +125,10 @@ const global = {
     // "request", and a field "type" that we use as identifier
     socket.on("request", handleRequest);
 
-    // Events sent by the client's "socket.io-client" have a name
-    // that we use as identifier
-    socket.on("DEBUG", handleDebug);
+    // Clean up on disconnect
+    socket.on("disconnect", stopStreaming);
 
-    startKurento();
+    setupKurento();
   });
 }
 
@@ -188,6 +158,21 @@ async function handleRequest(request, callback) {
 
 // ----------------------------------------------------------------------------
 
+async function setupKurento() {
+  const kurentoUrl = `ws://${CONFIG.kurento.ip}:${CONFIG.kurento.port}${CONFIG.kurento.wsPath}`;
+  console.log("Connect with Kurento Media Server:", kurentoUrl);
+
+  const kmsClient = global.kurento.client || new KurentoClient(kurentoUrl);
+  global.kurento.client = kmsClient;
+  console.log("Kurento client connected");
+
+  const kmsPipeline = global.kurento.pipeline || await kmsClient.create("MediaPipeline");
+  global.kurento.pipeline = kmsPipeline;
+  console.log("Kurento pipeline created", kmsPipeline.id);
+}
+
+// ----------------------------------------------------------------------------
+
 async function handleStartPresenter({ sdpOffer }) {
   return await startKurentoSenderEndpoint(sdpOffer);
 }
@@ -200,17 +185,26 @@ async function handleStartCast(enableSrt) {
 
 // ----------------------------------------------------------------------------
 
-async function startKurento() {
-  const kurentoUrl = `ws://${CONFIG.kurento.ip}:${CONFIG.kurento.port}${CONFIG.kurento.wsPath}`;
-  console.log("Connect with Kurento Media Server:", kurentoUrl);
+async function stopStreaming() {
+  if (global.kurento.rtp.sendEndpoint) {
+    global.kurento.rtp.sendEndpoint.release();
+    global.kurento.rtp.sendEndpoint = null;
+  }
 
-  const kmsClient = global.kurento.client || new KurentoClient(kurentoUrl);
-  global.kurento.client = kmsClient;
-  console.log("Kurento client connected");
+  if (global.kurento.rtc.sendEndpoint) {
+    global.kurento.rtc.sendEndpoint.release();
+    global.kurento.rtc.sendEndpoint = null;
+  }
 
-  const kmsPipeline = global.kurento.pipeline || await kmsClient.create("MediaPipeline");
-  global.kurento.pipeline = kmsPipeline;
-  console.log("Kurento pipeline created", kmsPipeline.id);
+  if (global.kurento.rtc.recvEndpoint) {
+    global.kurento.rtc.recvEndpoint.release();
+    global.kurento.rtc.recvEndpoint = null;
+  }
+
+  if (global.kurento.pipeline) {
+    global.kurento.pipeline.release();
+    global.kurento.pipeline = null;
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -245,7 +239,12 @@ async function startKurentoSenderEndpoint(sdpOffer) {
   console.log('process sdp Offer', sdpOffer);
   const sdpAnswer = await rtcEndpoint.processOffer(sdpOffer);
   const gathered = await rtcEndpoint.gatherCandidates();
+
+  // Parse and store this Answer as the server's capabilities
+  // This will then be used to generate a suitable RTP offer
+  // when setting up the GStreamer RTP Endpoint
   console.log("Answer", sdpAnswer);
+  global.kurento.capabilities = SdpTransform.parse(sdpAnswer);
 
   socket.emit("CAST_READY");
   return sdpAnswer;
@@ -264,35 +263,28 @@ function onIceCandidate({ candidate }) {
 // ----------------------------------------------------------------------------
 
 async function startKurentoRtpProducer(enableSrtp) {
-  const msRouter = global.mediasoup.router;
   const kmsRtpEndpoint = global.kurento.rtp.sendEndpoint;
 
-  // Kurento RtpEndpoint (send media to mediasoup)
-  // ---------------------------------------------
-
-  // When sending to mediasoup, we can choose our own identifiers;
-  // we choose the defaults from mediasoup just for convenience
+  // Kurento RtpEndpoint (send media to gstreamer sink)
+  // --------------------------------------------------
   const sdpVideoPayloadType = 102;
   const sdpHeaderExtId = 2;
 
-  const sdpListenIp = '127.0.0.1';
-  const sdpVideoListenPort = '10002';
-  const sdpListenPortRtcp = '10003';
-
   let sdpProtocol = "RTP/AVP";
+  const ports = await Porter.getMediaPorts(4);
 
   const sdp = {
     listenIp: '127.0.0.1',
     headerExtensionId: 2,
     protocol: 'RTP/AVP',
     audio: {
-      listenPort: 10000,
-      listenPortRtcp: 10001,
+      listenPort: ports.artp,
+      listenPortRtcp: ports.artcp,
       payloadType: 111,
     },
     video: {
-      listenPort: 10002,
-      listenPortRtcp: 10003,
+      listenPort: ports.vrtp,
+      listenPortRtcp: ports.artcp,
       payloadType: 102,
     },
   }
@@ -333,23 +325,81 @@ async function startKurentoRtpProducer(enableSrtp) {
 
 // ----------------------------------------------------------------------------
 
-async function handleDebug() {
+function startGStreamerRtmpStream(sdpSrcFile, rtmpStreamTarget) {
+  let streamResolve;
+  const streamPromise = new Promise((res, _rej) => {
+    streamResolve = res;
+  });
+
+  let gstreamerProg = "gst-launch-1.0";
+  let gstreamerArgs = [
+    "--eos-on-shutdown",
+    `filesrc location=${sdpSrcFile} !`,
+    "sdpdemux name=sdpdm timeout=0",
+    "sdpdm.stream_0 ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! voaacenc ! mux.",
+    "sdpdm.stream_1 ! rtph264depay ! h264parse ! mux.",
+    `flvmux name=mux streamable=true ! rtmpsink sync=false location=${rtmpStreamTarget}`,
+  ].concat();
+
+  let gstreamerEnv = {
+    GST_DEBUG: 6, // log level 6 = LOG
+  }
+
   console.log(
-    "[DEBUG] mediasoup RTP SEND transport stats (send to Kurento):\n",
-    await global.mediasoup.rtp.sendTransport.getStats()
+    `Run command: GST_DEBUG=${gstreamerEnv.GST_DEBUG} ${gstreamerProg} ${gstreamerArgs}`
   );
-  console.log(
-    "[DEBUG] mediasoup RTP SEND consumer stats (send to Kurento):\n",
-    await global.mediasoup.rtp.sendConsumer.getStats()
-  );
-  console.log(
-    "[DEBUG] mediasoup RTP RECV transport stats (receive from Kurento):\n",
-    await global.mediasoup.rtp.recvTransport.getStats()
-  );
-  console.log(
-    "[DEBUG] mediasoup RTP RECV producer stats (receive from Kurento):\n",
-    await global.mediasoup.rtp.recvProducer.getStats()
-  );
+
+  let gstreamer = Process.spawn(gstreamerProg, gstreamerArgs, { env: gstreamerEnv });
+  global.gstreamer.process = gstreamer;
+
+  gstreamer.on("error", (err) => {
+    console.error("Streaming process error:", err);
+  });
+
+  gstreamer.on("exit", (code, signal) => {
+    console.log("Streaming process exit, code: %d, signal: %s", code, signal);
+
+    global.gstreamer.process = null;
+    stopStreaming();
+
+    if (!signal || signal === "SIGINT") {
+      console.log("Streaming stopped");
+    } else {
+      console.warn(
+        "Streaming process didn't exit cleanly, output file might be corrupt"
+      );
+    }
+  });
+
+  // GStreamer writes some initial logs to stdout
+  // Detect when the pipeline is playing and resolve the stream as live
+  gstreamer.stdout.on("data", (chunk) => {
+    chunk
+      .toString()
+      .split(/\r?\n/g)
+      .filter(Boolean) // Filter out empty strings
+      .forEach((line) => {
+        console.log(line);
+        if (line.startsWith("Setting pipeline to PLAYING")) {
+          setTimeout(() => {
+            streamResolve();
+          }, 1000);
+        }
+      });
+  });
+
+  // GStreamer writes its progress logs to stderr
+  gstreamer.stderr.on("data", (chunk) => {
+    chunk
+      .toString()
+      .split(/\r?\n/g)
+      .filter(Boolean) // Filter out empty strings
+      .forEach((line) => {
+        console.log(line);
+      });
+  });
+
+  return streamPromise;
 }
 
 // ----------------------------------------------------------------------------
@@ -393,8 +443,6 @@ function getMsHeaderExtId(kind, name) {
 // Helper function:
 // Get RtcpParameters (https://mediasoup.org/documentation/v3/mediasoup/rtp-parameters-and-capabilities/#RtcpParameters)
 // from an SDP object obtained from `SdpTransform.parse()`.
-// We need this because MediasoupRtpUtils has useful functions like
-// `getRtpEncodings()`, but it lacks something like `getRtcpParameters()`.
 function getRtcpParameters(sdpObject, kind) {
   const mediaObject = (sdpObject.media || []).find((m) => m.type === kind);
   if (!mediaObject) {
