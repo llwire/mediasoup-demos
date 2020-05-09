@@ -362,7 +362,7 @@ function startGStreamerRtmpStream() {
 
   let gstreamerProg = "gst-launch-1.0";
   let gstreamerArgs = [
-    "--eos-on-shutdown",
+    "-e -m",
     `filesrc location=${global.gstreamer.sdpFilesrc} !`,
     "sdpdemux name=sdpdm timeout=0",
     "sdpdm.stream_0 ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! voaacenc ! mux.",
@@ -371,7 +371,7 @@ function startGStreamerRtmpStream() {
   ].join(' ').trim();
 
   let gstreamerEnv = {
-    GST_DEBUG: 2, // log level 6 = LOG
+    GST_DEBUG: '2,sdpdemux:4,flvmux:4,rtmpsink:6', // log level 4 = INFO
   }
 
   console.log(
