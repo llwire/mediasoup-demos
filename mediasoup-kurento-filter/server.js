@@ -30,7 +30,7 @@ const global = {
 
   gstreamer: {
     process: null,
-    sdpFilesrc: `/tmp/stream-${UUIDv4}.sdp`,
+    sdpFilesrc: `/tmp/stream-${UUIDv4()}.sdp`,
     rtmpTarget: process.env.RTMP_DEST || 'rtmp://localhost/live',
   },
 
@@ -221,7 +221,7 @@ async function stopStreaming() {
       console.log('Destroy SDP  pipeline ...');
     }
 
-    global.gstreamer.sdpFilesrc = `/tmp/stream-${UUIDv4}.sdp`;
+    global.gstreamer.sdpFilesrc = `/tmp/stream-${UUIDv4()}.sdp`;
     console.log('Set new SDP file source', global.gstreamer.sdpFilesrc);
   }
 }
