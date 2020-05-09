@@ -192,7 +192,7 @@ async function handleStartCast(enableSrt) {
 
 async function stopStreaming() {
   if (global.gstreamer.process) {
-    global.gstreamer.process.kill();
+    global.gstreamer.process.kill('SIGINT');
     global.gstreamer.process = null;
   }
 
@@ -340,7 +340,7 @@ async function startKurentoRtpProducer(enableSrtp) {
     "";
 
   // Set maximum bitrate higher than default of 500 kbps
-  await kmsRtpEndpoint.setMaxVideoSendBandwidth(2000); // Send max 2 mbps
+  await kmsRtpEndpoint.setMaxVideoSendBandwidth(3000); // Send max 3 mbps
 
   console.log("SDP Offer from App to Kurento RTP SEND:\n%s", kmsSdpOffer);
   const kmsSdpAnswer = await kmsRtpEndpoint.processOffer(kmsSdpOffer);
@@ -352,7 +352,7 @@ async function startKurentoRtpProducer(enableSrtp) {
 
 // ----------------------------------------------------------------------------
 
-function startGStreamerRtmpStream() {
+function startGStreamerRtmpStream(test) {
   let streamResolve;
   const streamPromise = new Promise((res, _rej) => {
     streamResolve = res;
@@ -363,16 +363,18 @@ function startGStreamerRtmpStream() {
   // GStreamer transcodes the audio stream in SDP from OPUS to AAC
   // The H264 video stream just passes through
   // These are combined into an FLV format used by the RTMP
+  // Revisit this and consider using rtpsession in GStreamer
   // -------------------------------------------------------------
 
   let gstreamerProg = "gst-launch-1.0";
+  let testFlag = test ? '?bandwidthtest=true' : '';
   let gstreamerArgs = [
-    "-e -m",
+    "--eos-on-shutdown",
     `filesrc location=${global.gstreamer.sdpFilesrc} !`,
     "sdpdemux name=sdpdm timeout=0",
     "sdpdm.stream_0 ! queue ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! voaacenc ! mux.",
     "sdpdm.stream_1 ! queue ! rtph264depay ! h264parse ! mux.",
-    `flvmux name=mux streamable=true ! rtmpsink sync=false location=${global.gstreamer.rtmpTarget}`,
+    `flvmux name=mux streamable=true ! rtmpsink sync=true location=${global.gstreamer.rtmpTarget}${testFlag}`,
   ].join(' ').trim();
 
   let gstreamerEnv = {
