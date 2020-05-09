@@ -32,6 +32,7 @@ const global = {
     process: null,
     sdpFilesrc: `/tmp/stream-${UUIDv4()}.sdp`,
     rtmpTarget: process.env.RTMP_DEST || 'rtmp://localhost/live',
+    streamTest: process.env.STREAM_ENV && (process.env.STREAM_ENV === 'test'),
   },
 
   kurento: {
@@ -352,7 +353,7 @@ async function startKurentoRtpProducer(enableSrtp) {
 
 // ----------------------------------------------------------------------------
 
-function startGStreamerRtmpStream(test) {
+function startGStreamerRtmpStream() {
   let streamResolve;
   const streamPromise = new Promise((res, _rej) => {
     streamResolve = res;
@@ -367,7 +368,7 @@ function startGStreamerRtmpStream(test) {
   // -------------------------------------------------------------
 
   let gstreamerProg = "gst-launch-1.0";
-  let testFlag = test ? '?bandwidthtest=true' : '';
+  let testFlag = global.gstreamer.streamTest ? '?bandwidthtest=true' : '';
   let gstreamerArgs = [
     "--eos-on-shutdown",
     `filesrc location=${global.gstreamer.sdpFilesrc} !`,
