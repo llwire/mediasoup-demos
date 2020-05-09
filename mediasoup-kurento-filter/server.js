@@ -371,7 +371,7 @@ function startGStreamerRtmpStream() {
   ].join(' ').trim();
 
   let gstreamerEnv = {
-    GST_DEBUG: '2,sdpdemux:4,flvmux:4,rtmpsink:6', // log level 4 = INFO
+    GST_DEBUG: '2,sdpdemux:4,flvmux:4,rtmpsink:4', // log level 4 = INFO
   }
 
   console.log(
