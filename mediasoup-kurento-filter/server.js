@@ -13,6 +13,7 @@ const SocketServer = require("socket.io");
 const Util = require("util");
 const Process = require("child_process");
 const Porter = require("./porter")();
+const { v4: UUIDv4 } = require('uuid');
 
 // ----------------------------------------------------------------------------
 
@@ -29,6 +30,8 @@ const global = {
 
   gstreamer: {
     process: null,
+    sdpFilesrc: `/tmp/stream-${UUIDv4}.sdp`,
+    rtmpTarget: process.env.RTMP_DEST || 'rtmp://localhost/live',
   },
 
   kurento: {
@@ -181,6 +184,8 @@ async function handleStartPresenter({ sdpOffer }) {
 
 async function handleStartCast(enableSrt) {
   await startKurentoRtpProducer(enableSrt);
+
+  await startGStreamerRtmpStream();
 }
 
 // ----------------------------------------------------------------------------
@@ -204,6 +209,14 @@ async function stopStreaming() {
   if (global.kurento.pipeline) {
     global.kurento.pipeline.release();
     global.kurento.pipeline = null;
+  }
+
+  if (global.gstreamer.sdpFilesrc) {
+    if (Fs.existsSync(global.gstreamer.sdpFilesrc)) {
+      Fs.unlinkSync(global.gstreamer.sdpFilesrc)
+    }
+
+    global.gstreamer.sdpFilesrc = null;
   }
 }
 
@@ -321,24 +334,34 @@ async function startKurentoRtpProducer(enableSrtp) {
   console.log("SDP Offer from App to Kurento RTP SEND:\n%s", kmsSdpOffer);
   const kmsSdpAnswer = await kmsRtpEndpoint.processOffer(kmsSdpOffer);
   console.log("SDP Answer from Kurento RTP SEND to App:\n%s", kmsSdpAnswer);
+
+  // Write the SDP offer to the gstreamer SDP file src
+  Fs.writeFileSync(global.gstreamer.sdpFilesrc, kmsSdpOffer)
 }
 
 // ----------------------------------------------------------------------------
 
-function startGStreamerRtmpStream(sdpSrcFile, rtmpStreamTarget) {
+function startGStreamerRtmpStream() {
   let streamResolve;
   const streamPromise = new Promise((res, _rej) => {
     streamResolve = res;
   });
 
+  // GStreamer RtmpStream (send media to streaming network)
+  // This re-streams the RTP media to a specified RTMP target
+  // GStreamer transcodes the audio stream in SDP from OPUS to AAC
+  // The H264 video stream just passes through
+  // These are combined into an FLV format used by the RTMP
+  // -------------------------------------------------------------
+
   let gstreamerProg = "gst-launch-1.0";
   let gstreamerArgs = [
     "--eos-on-shutdown",
-    `filesrc location=${sdpSrcFile} !`,
+    `filesrc location=${global.gstreamer.sdpFilesrc} !`,
     "sdpdemux name=sdpdm timeout=0",
     "sdpdm.stream_0 ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! voaacenc ! mux.",
     "sdpdm.stream_1 ! rtph264depay ! h264parse ! mux.",
-    `flvmux name=mux streamable=true ! rtmpsink sync=false location=${rtmpStreamTarget}`,
+    `flvmux name=mux streamable=true ! rtmpsink sync=false location=${global.gstreamer.rtmpTarget}`,
   ].concat();
 
   let gstreamerEnv = {
