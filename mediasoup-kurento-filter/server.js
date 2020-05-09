@@ -191,6 +191,11 @@ async function handleStartCast(enableSrt) {
 // ----------------------------------------------------------------------------
 
 async function stopStreaming() {
+  if (global.gstreamer.process) {
+    global.gstreamer.process.kill();
+    global.gstreamer.process = null;
+  }
+
   if (global.kurento.rtp.sendEndpoint) {
     global.kurento.rtp.sendEndpoint.release();
     global.kurento.rtp.sendEndpoint = null;
@@ -365,8 +370,8 @@ function startGStreamerRtmpStream() {
     "-e -m",
     `filesrc location=${global.gstreamer.sdpFilesrc} !`,
     "sdpdemux name=sdpdm timeout=0",
-    "sdpdm.stream_0 ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! voaacenc ! mux.",
-    "sdpdm.stream_1 ! rtph264depay ! h264parse ! mux.",
+    "sdpdm.stream_0 ! queue ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! voaacenc ! mux.",
+    "sdpdm.stream_1 ! queue ! rtph264depay ! h264parse ! mux.",
     `flvmux name=mux streamable=true ! rtmpsink sync=false location=${global.gstreamer.rtmpTarget}`,
   ].join(' ').trim();
 
