@@ -368,10 +368,10 @@ function startGStreamerRtmpStream() {
     "sdpdm.stream_0 ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! voaacenc ! mux.",
     "sdpdm.stream_1 ! rtph264depay ! h264parse ! mux.",
     `flvmux name=mux streamable=true ! rtmpsink sync=false location=${global.gstreamer.rtmpTarget}`,
-  ].concat();
+  ]
 
   let gstreamerEnv = {
-    GST_DEBUG: 6, // log level 6 = LOG
+    GST_DEBUG: 2, // log level 6 = LOG
   }
 
   console.log(
@@ -403,6 +403,7 @@ function startGStreamerRtmpStream() {
   // GStreamer writes some initial logs to stdout
   // Detect when the pipeline is playing and resolve the stream as live
   gstreamer.stdout.on("data", (chunk) => {
+    out = [];
     chunk
       .toString()
       .split(/\r?\n/g)
@@ -416,7 +417,7 @@ function startGStreamerRtmpStream() {
         }
       });
   });
-
+ let out = []
   // GStreamer writes its progress logs to stderr
   gstreamer.stderr.on("data", (chunk) => {
     chunk
@@ -424,6 +425,7 @@ function startGStreamerRtmpStream() {
       .split(/\r?\n/g)
       .filter(Boolean) // Filter out empty strings
       .forEach((line) => {
+        out.push(line);
         console.log(line);
       });
   });
