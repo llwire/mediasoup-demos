@@ -368,7 +368,7 @@ function startGStreamerRtmpStream() {
     "sdpdm.stream_0 ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! voaacenc ! mux.",
     "sdpdm.stream_1 ! rtph264depay ! h264parse ! mux.",
     `flvmux name=mux streamable=true ! rtmpsink sync=false location=${global.gstreamer.rtmpTarget}`,
-  ].join(' ')
+  ].join(' ').trim();
 
   let gstreamerEnv = {
     GST_DEBUG: 2, // log level 6 = LOG
@@ -378,7 +378,7 @@ function startGStreamerRtmpStream() {
     `Run command: GST_DEBUG=${gstreamerEnv.GST_DEBUG} ${gstreamerProg} ${gstreamerArgs}`
   );
 
-  let gstreamer = Process.spawn(gstreamerProg, gstreamerArgs, { env: gstreamerEnv });
+  let gstreamer = Process.spawn(gstreamerProg, gstreamerArgs.split(/\s+/), { env: gstreamerEnv });
   global.gstreamer.process = gstreamer;
 
   gstreamer.on("error", (err) => {
