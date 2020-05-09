@@ -368,7 +368,7 @@ function startGStreamerRtmpStream() {
     "sdpdm.stream_0 ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! voaacenc ! mux.",
     "sdpdm.stream_1 ! rtph264depay ! h264parse ! mux.",
     `flvmux name=mux streamable=true ! rtmpsink sync=false location=${global.gstreamer.rtmpTarget}`,
-  ]
+  ].join(' ')
 
   let gstreamerEnv = {
     GST_DEBUG: 2, // log level 6 = LOG
