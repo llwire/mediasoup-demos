@@ -194,29 +194,35 @@ async function stopStreaming() {
   if (global.kurento.rtp.sendEndpoint) {
     global.kurento.rtp.sendEndpoint.release();
     global.kurento.rtp.sendEndpoint = null;
+    console.log('Release RTP send endpoint ...');
   }
 
   if (global.kurento.rtc.sendEndpoint) {
     global.kurento.rtc.sendEndpoint.release();
     global.kurento.rtc.sendEndpoint = null;
+    console.log('Release RTC send endpoint ...');
   }
 
   if (global.kurento.rtc.recvEndpoint) {
     global.kurento.rtc.recvEndpoint.release();
     global.kurento.rtc.recvEndpoint = null;
+    console.log('Release RTC recv endpoint ...');
   }
 
   if (global.kurento.pipeline) {
     global.kurento.pipeline.release();
     global.kurento.pipeline = null;
+    console.log('Release Kurento pipeline ...');
   }
 
   if (global.gstreamer.sdpFilesrc) {
     if (Fs.existsSync(global.gstreamer.sdpFilesrc)) {
       Fs.unlinkSync(global.gstreamer.sdpFilesrc)
+      console.log('Destroy SDP  pipeline ...');
     }
 
-    global.gstreamer.sdpFilesrc = null;
+    global.gstreamer.sdpFilesrc = `/tmp/stream-${UUIDv4}.sdp`;
+    console.log('Set new SDP file source', global.gstreamer.sdpFilesrc);
   }
 }
 
