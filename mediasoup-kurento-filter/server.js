@@ -482,8 +482,7 @@ function getMediaCapabilities(mimeType) {
   let [type, codec] = mimeType.split('/');
 
   const media = capabilities.media.filter(medium => medium.type === type).shift();
-  // Use pop() to take last entry with the highest profile
-  const rtpPref = media.rtp.filter(rtp => rtp.codec === codec).pop();
+  const rtpPref = media.rtp.filter(rtp => rtp.codec === codec).shift();
   let mediaFormat = `${rtpPref.codec}/${rtpPref.rate}`;
   if (rtpPref.encoding) {
     // audio might have 2 channels
