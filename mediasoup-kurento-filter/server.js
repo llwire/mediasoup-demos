@@ -520,7 +520,7 @@ function getRtcpParameters(sdpObject, kind) {
   );
   const cname = ssrcCname && ssrcCname.value ? ssrcCname : null;
 
-  return { cname: cname, reducedSize: reducedSize };
+  return { cname: cname };
 }
 
 // ----------------------------------------------------------------------------
