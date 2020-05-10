@@ -368,6 +368,10 @@ async function startKurentoRtpProducer(enableSrtp) {
     }
   });
 
+  kmsRtpEndpoint.on('MediaFlowOutStateChange', (event) => {
+    console.log(`[RTP] Media flow-out state changed`, event);
+  });
+
   console.log("SDP Offer from App to Kurento RTP SEND:\n%s", kmsSdpOffer);
   const kmsSdpAnswer = await kmsRtpEndpoint.processOffer(kmsSdpOffer);
 
