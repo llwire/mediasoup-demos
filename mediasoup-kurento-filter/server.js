@@ -186,7 +186,7 @@ async function handleStartPresenter({ sdpOffer }) {
 async function handleStartCast(enableSrt) {
   await startKurentoRtpProducer(enableSrt);
 
-  await startGStreamerRtmpStream();
+  // await startGStreamerRtmpStream();
 }
 
 // ----------------------------------------------------------------------------
@@ -353,7 +353,7 @@ async function startKurentoRtpProducer(enableSrtp) {
     "a=recvonly\r\n" +
     `a=rtpmap:${sdp.video.payloadType} ${sdp.video.format}\r\n` +
     `a=rtcp:${sdp.video.listenPortRtcp}\r\n` +
-    // sdp.video.rtcpFb.map(fb => `a=rtcp-fb:${fb.payload} ${fb.type} ${fb.subtype || ''}`.trim() + '\r\n').join('') +
+    sdp.video.rtcpFb.map(fb => `a=rtcp-fb:${fb.payload} ${fb.type} ${fb.subtype || ''}`.trim() + '\r\n').join('') +
     `a=fmtp:${sdp.video.payloadType} ${sdp.video.fmtp.config}\r\n` +
     "";
 
