@@ -329,42 +329,57 @@ async function startKurentoRtpProducer(enableSrtp) {
 
   // SDP Offer for Kurento RtpEndpoint
   // prettier-ignore
-  const kmsSdpOffer =
+  const sdpOfferHeader =
     "v=0\r\n" +
     `o=- 0 0 IN IP4 ${sdp.listenIp}\r\n` +
     "s=-\r\n" +
     `c=IN IP4 ${sdp.listenIp}\r\n` +
-    "t=0 0\r\n" +
+    "t=0 0\r\n";
 
-    // audio
+  // audio
+  const sdpAudioOffer =
     `m=audio ${sdp.audio.listenPort} ${sdp.protocol} ${sdp.audio.payloadType}\r\n` +
     `a=extmap:${sdp.audio.headerExt.value} ${sdp.audio.headerExt.uri}\r\n` +
     "a=recvonly\r\n" +
     `a=rtpmap:${sdp.audio.payloadType} ${sdp.audio.format}\r\n` +
-    `a=rtcp:${sdp.audio.listenPortRtcp}\r\n` +
     `a=fmtp:${sdp.audio.payloadType} ${sdp.audio.fmtp.config}\r\n` +
+    `a=rtcp:${sdp.audio.listenPortRtcp}\r\n`;
 
-    // video
+  // video
+  const sdpVideoOffer =
     `m=video ${sdp.video.listenPort} ${sdp.protocol} ${sdp.video.payloadType}\r\n` +
     `a=extmap:${sdp.video.headerExt.value} ${sdp.video.headerExt.uri}\r\n` +
     "a=recvonly\r\n" +
     `a=rtpmap:${sdp.video.payloadType} ${sdp.video.format}\r\n` +
+    `a=fmtp:${sdp.video.payloadType} ${sdp.video.fmtp.config}\r\n` +
     `a=rtcp:${sdp.video.listenPortRtcp}\r\n` +
     sdp.video.rtcpFb.map(fb => `a=rtcp-fb:${fb.payload} ${fb.type} ${fb.subtype || ''}`.trim() + '\r\n').join('') +
-    `a=fmtp:${sdp.video.payloadType} ${sdp.video.fmtp.config}\r\n` +
     "";
+
+  let kmsSdpOffer = sdpOfferHeader + sdpAudioOffer + sdpVideoOffer;
 
   // Set maximum bitrate higher than default of 500 kbps
   await kmsRtpEndpoint.setMaxVideoSendBandwidth(3000); // Send max 8mbps
-  kmsRtpEndpoint.on('MediaFlowInStateChange', (state) => {
+  kmsRtpEndpoint.on('MediaFlowInStateChange', ({ mediaType, state }) => {
     console.log(`[RTP] Media flow-in state changed`, state);
+
+    if (mediaType === 'VIDEO' && state === 'FLOWING') {
+      startGStreamerRtmpStream();
+    }
   });
+
   console.log("SDP Offer from App to Kurento RTP SEND:\n%s", kmsSdpOffer);
   const kmsSdpAnswer = await kmsRtpEndpoint.processOffer(kmsSdpOffer);
+
   console.log("SDP Answer from Kurento RTP SEND to App:\n%s", kmsSdpAnswer);
+  const kmsSdpAnswerObj = SdpTransform.parse(kmsSdpAnswer);
+  let audioRtcpExt = getRtcpParameters(kmsSdpAnswerObj, 'audio');
+  let videoRtcpExt = getRtcpParameters(kmsSdpAnswerObj, 'video');
+
+  console.log('RTCP Extension', audioRtcpExt, videoRtcpExt);
 
   // Write the SDP offer to the gstreamer SDP file src
-  Fs.writeFileSync(global.gstreamer.sdpFilesrc, kmsSdpOffer)
+  Fs.writeFileSync(global.gstreamer.sdpFilesrc, kmsSdpOffer);
 }
 
 // ----------------------------------------------------------------------------
