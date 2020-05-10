@@ -247,6 +247,9 @@ async function startKurentoSenderEndpoint(sdpOffer) {
     console.log('Sending ICE candidate ...')
     socket.emit('ICE_CANDIDATE', parsedCandidate);
   });
+  rtcEndpoint.on('MediaFlowOutStateChange', (state) => {
+    console.log(`[${type}] Media flow-out state changed`, state);
+  });
 
   Object.entries({ RTC: rtcEndpoint, RTP: rtpEndpoint}).forEach((entry) => {
     let [type, endpoint] = entry;
@@ -259,12 +262,6 @@ async function startKurentoSenderEndpoint(sdpOffer) {
     });
     endpoint.on('MediaTranscodingStateChange', (state) => {
       console.log(`[${type}] Media transcoding state changed`, state);
-    });
-    endpoint.on('MediaFlowInStateChange', (state) => {
-      console.log(`[${type}] Media flow-in state changed`, state);
-    });
-    endpoint.on('MediaFlowOutStateChange', (state) => {
-      console.log(`[${type}] Media flow-out state changed`, state);
     });
   });
 
@@ -359,7 +356,9 @@ async function startKurentoRtpProducer(enableSrtp) {
 
   // Set maximum bitrate higher than default of 500 kbps
   await kmsRtpEndpoint.setMaxVideoSendBandwidth(3000); // Send max 8mbps
-
+  kmsRtpEndpoint.on('MediaFlowInStateChange', (state) => {
+    console.log(`[${type}] Media flow-in state changed`, state);
+  });
   console.log("SDP Offer from App to Kurento RTP SEND:\n%s", kmsSdpOffer);
   const kmsSdpAnswer = await kmsRtpEndpoint.processOffer(kmsSdpOffer);
   console.log("SDP Answer from Kurento RTP SEND to App:\n%s", kmsSdpAnswer);
@@ -470,7 +469,8 @@ function getMediaCapabilities(mimeType) {
   let [type, codec] = mimeType.split('/');
 
   const media = capabilities.media.filter(medium => medium.type === type).shift();
-  const rtpPref = media.rtp.filter(rtp => rtp.codec === codec).shift();
+  // Use pop() to take last entry with the highest profile
+  const rtpPref = media.rtp.filter(rtp => rtp.codec === codec).pop();
   let mediaFormat = `${rtpPref.codec}/${rtpPref.rate}`;
   if (rtpPref.encoding) {
     // audio might have 2 channels
