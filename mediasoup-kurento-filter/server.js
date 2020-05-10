@@ -362,7 +362,7 @@ async function startKurentoRtpProducer(enableSrtp) {
     console.log(`[RTP] Media flow-in state changed`, state);
 
     if (mediaType === 'VIDEO' && state === 'FLOWING') {
-      startGStreamerRtmpStream();
+      setTimeout(startGStreamerRtmpStream, 1000);
     }
   });
 
