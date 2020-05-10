@@ -357,7 +357,9 @@ async function startKurentoRtpProducer(enableSrtp) {
   let kmsSdpOffer = sdpOfferHeader + sdpAudioOffer + sdpVideoOffer;
 
   // Set maximum bitrate higher than default of 500 kbps
-  await kmsRtpEndpoint.setMaxVideoSendBandwidth(3000); // Send max 8mbps
+  // Setting max bitrate of 4 Mbps for 1080p streaming
+  // Ref https://support.google.com/youtube/answer/2853702
+  await kmsRtpEndpoint.setMaxVideoSendBandwidth(4000); // Send max 3mbps
   kmsRtpEndpoint.on('MediaFlowInStateChange', ({ mediaType, state }) => {
     console.log(`[RTP] Media flow-in state changed`, state);
 
@@ -403,7 +405,7 @@ function startGStreamerRtmpStream() {
     `filesrc location=${global.gstreamer.sdpFilesrc} !`,
     "sdpdemux name=sdpdm timeout=0",
     "sdpdm.stream_0 ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! voaacenc ! mux.",
-    "sdpdm.stream_1 ! rtph264depay ! h264parse ! mux.",
+    "sdpdm.stream_1 ! rtph264depay ! h264parse config-interval=2 ! mux.",
     `flvmux name=mux streamable=true ! rtmpsink sync=false location=${global.gstreamer.rtmpTarget}${testFlag}`,
   ].join(' ').trim();
 
