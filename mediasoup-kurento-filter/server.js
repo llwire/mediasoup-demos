@@ -317,17 +317,16 @@ async function startKurentoRtpProducer(enableSrtp) {
 
   const sdp = {
     listenIp: '127.0.0.1',
-    headerExtensionId: 2,
     protocol: 'RTP/AVP',
     audio: {
       listenPort: ports.artp,
       listenPortRtcp: ports.artcp,
-      payloadType: 111,
+      ...getMediaCapabilities('audio/opus'),
     },
     video: {
       listenPort: ports.vrtp,
       listenPortRtcp: ports.artcp,
-      payloadType: 102,
+      ...getMediaCapabilities('video/H264'),
     },
   }
 
@@ -342,23 +341,20 @@ async function startKurentoRtpProducer(enableSrtp) {
 
     // audio
     `m=audio ${sdp.audio.listenPort} ${sdp.protocol} ${sdp.audio.payloadType}\r\n` +
-    `a=extmap:${sdp.headerExtensionId} http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\n` +
+    `a=extmap:${sdp.audio.headerExt.value} ${sdp.audio.headerExt.uri}\r\n` +
     "a=recvonly\r\n" +
-    `a=rtpmap:${sdp.audio.payloadType} opus/48000/2\r\n` +
+    `a=rtpmap:${sdp.audio.payloadType} ${sdp.audio.format}\r\n` +
     `a=rtcp:${sdp.audio.listenPortRtcp}\r\n` +
-    `a=fmtp:${sdp.audio.payloadType} minptime=10;useinbandfec=1\r\n` +
+    `a=fmtp:${sdp.audio.payloadType} ${sdp.audio.fmtpConfig}\r\n` +
 
     // video
     `m=video ${sdp.video.listenPort} ${sdp.protocol} ${sdp.video.payloadType}\r\n` +
-    `a=extmap:${sdp.headerExtensionId} http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\n` +
+    `a=extmap:${sdp.video.headerExt.value} ${sdp.video.headerExt.uri}\r\n` +
     "a=recvonly\r\n" +
-    `a=rtpmap:${sdp.video.payloadType} H264/90000\r\n` +
+    `a=rtpmap:${sdp.video.payloadType} ${sdp.video.format}\r\n` +
     `a=rtcp:${sdp.video.listenPortRtcp}\r\n` +
-    // `a=rtcp-fb:${sdp.video.payloadType} goog-remb\r\n` +
-    // `a=rtcp-fb:${sdp.video.payloadType} ccm fir\r\n` +
-    // `a=rtcp-fb:${sdp.video.payloadType} nack\r\n` +
-    // `a=rtcp-fb:${sdp.video.payloadType} nack pli\r\n` +
-    `a=fmtp:${sdp.video.payloadType} level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42001f\r\n` +
+    sdp.video.rtcpFb.map(fb => `a=rtcp-fb:${fb.payload} ${fb.type} ${fb.subtype || ''}\r\n`.trim()).join() +
+    `a=fmtp:${sdp.video.payloadType} ${sdp.video.fmtpConfig}\r\n` +
     "";
 
   // Set maximum bitrate higher than default of 500 kbps
@@ -468,18 +464,27 @@ function startGStreamerRtmpStream() {
 
 // Helper function:
 // Get mediasoup router's preferred PayloadType
-function getMsPayloadType(mimeType) {
-  const router = global.mediasoup.router;
-  let pt = 0;
+function getMediaCapabilities(mimeType) {
+  const capabilities = global.kurento.capabilities;
+  let [type, codec] = mimeType.split('/');
 
-  const codec = router.rtpCapabilities.codecs.find(
-    (c) => c.mimeType === mimeType
-  );
-  if (codec) {
-    pt = codec.preferredPayloadType;
+  const media = capabilities.media.filter(medium => medium.type === type).shift();
+  const rtpPref = media.rtp.filter(rtp => rtp.codec === codec).shift();
+  let mediaFormat = `${rtpPref.codec}/${rtpPref.rate}`;
+  if (rtpPref.encoding) {
+    // audio might have 2 channels
+    mediaFormat = `${mediaFormat}/${rtpPref.encoding}`;
   }
 
-  return pt;
+  return {
+    payloadType: rtpPref.payload,
+    format: mediaFormat,
+    headerExt: media.ext.shift(),
+
+    // video only
+    fmtpConfig: media.fmtp && media.fmtp.filter(fmtp => fmtp.payload === rtpPref.payload).shift(),
+    rtcpFb: media.rtcpFb && media.rtcpFb.filter(rtcpFb => rtcpFb.payload === rtpPref.payload),
+  };
 }
 
 // ----
