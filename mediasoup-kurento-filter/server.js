@@ -250,21 +250,21 @@ async function startKurentoSenderEndpoint(sdpOffer) {
     console.log('Sending ICE candidate ...')
     socket.emit('ICE_CANDIDATE', parsedCandidate);
   });
-  rtcEndpoint.on('MediaFlowOutStateChange', (state) => {
-    console.log(`[RTC] Media flow-out state changed`, state);
+  rtcEndpoint.on('MediaFlowOutStateChange', ({ mediaType, state }) => {
+    console.log(`[RTC] ${mediaType} flow-out state changed to ${state}\n`);
   });
 
   Object.entries({ RTC: rtcEndpoint, RTP: rtpEndpoint}).forEach((entry) => {
     let [type, endpoint] = entry;
 
-    endpoint.on('ConnectionStateChanged', (state) => {
-      console.log(`[${type}] Connection state changed`, state);
+    endpoint.on('ConnectionStateChanged', ({ source, newState }) => {
+      console.log(`[${type}] Connection state changed to ${newState}\n`);
     });
-    endpoint.on('MediaStateChanged', (state) => {
-      console.log(`[${type}] Media state changed`, state);
+    endpoint.on('MediaStateChanged', ({ mediaType, state }) => {
+      console.log(`[${type}] ${mediaType} state changed to ${state}\n`);
     });
-    endpoint.on('MediaTranscodingStateChange', (state) => {
-      console.log(`[${type}] Media transcoding state changed`, state);
+    endpoint.on('MediaTranscodingStateChange', ({ mediaType, state }) => {
+      console.log(`[${type}] ${mediaType} transcoding state changed to ${state}\n`);
     });
   });
 
@@ -366,7 +366,7 @@ async function startKurentoRtpProducer(enableSrtp) {
   // Ref https://support.google.com/youtube/answer/2853702
   await kmsRtpEndpoint.setMaxVideoSendBandwidth(4000); // Send max 3mbps
   kmsRtpEndpoint.on('MediaFlowInStateChange', ({ mediaType, state }) => {
-    console.log(`[RTP] Media flow-in state changed`, state);
+    console.log(`[RTP] ${mediaType} flow-in state changed to ${state}\n`);
 
     if (mediaType === 'VIDEO' && state === 'FLOWING') {
       setTimeout(startGStreamerRtmpStream, 1000);
