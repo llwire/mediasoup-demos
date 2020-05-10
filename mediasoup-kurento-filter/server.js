@@ -354,7 +354,7 @@ async function startKurentoRtpProducer(enableSrtp) {
     `a=rtpmap:${sdp.video.payloadType} ${sdp.video.format}\r\n` +
     `a=rtcp:${sdp.video.listenPortRtcp}\r\n` +
     sdp.video.rtcpFb.map(fb => `a=rtcp-fb:${fb.payload} ${fb.type} ${fb.subtype || ''}\r\n`.trim()).join() +
-    `a=fmtp:${sdp.video.payloadType} ${sdp.video.fmtpConfig}\r\n` +
+    `a=fmtp:${sdp.video.payloadType} ${sdp.video.fmtp.config}\r\n` +
     "";
 
   // Set maximum bitrate higher than default of 500 kbps
@@ -482,7 +482,7 @@ function getMediaCapabilities(mimeType) {
     headerExt: media.ext.shift(),
 
     // video only
-    fmtpConfig: media.fmtp && media.fmtp.filter(fmtp => fmtp.payload === rtpPref.payload).shift(),
+    fmtp: media.fmtp && media.fmtp.filter(fmtp => fmtp.payload === rtpPref.payload).shift(),
     rtcpFb: media.rtcpFb && media.rtcpFb.filter(rtcpFb => rtcpFb.payload === rtpPref.payload),
   };
 }
