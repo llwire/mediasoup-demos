@@ -312,7 +312,7 @@ async function startKurentoRtpProducer(enableSrtp) {
   const ports = await Porter.getMediaPorts(4);
   const sdp = {
     listenIp: '127.0.0.1',
-    protocol: 'RTP/AVP',
+    protocol: 'RTP/AVPF',
     audio: {
       listenPort: ports.artp,
       listenPortRtcp: ports.artcp,
@@ -341,8 +341,9 @@ async function startKurentoRtpProducer(enableSrtp) {
     "a=recvonly\r\n" +
     `a=rtpmap:${sdp.audio.payloadType} ${sdp.audio.format}\r\n` +
     `a=fmtp:${sdp.audio.payloadType} ${sdp.audio.fmtp.config}\r\n` +
-    `a=rtcp:${sdp.audio.listenPortRtcp}\r\n`;
-
+    `a=rtcp:${sdp.audio.listenPortRtcp}\r\n` +
+    `a=ssrc:11${sdp.audio.listenPortRtcp}11 cname:user${sdp.audio.listenPortRtcp}@watchq.tv\r\n` +
+    "";
   // video
   const sdpVideoOffer =
     `m=video ${sdp.video.listenPort} ${sdp.protocol} ${sdp.video.payloadType}\r\n` +
@@ -352,6 +353,7 @@ async function startKurentoRtpProducer(enableSrtp) {
     `a=fmtp:${sdp.video.payloadType} ${sdp.video.fmtp.config}\r\n` +
     `a=rtcp:${sdp.video.listenPortRtcp}\r\n` +
     sdp.video.rtcpFb.map(fb => `a=rtcp-fb:${fb.payload} ${fb.type} ${fb.subtype || ''}`.trim() + '\r\n').join('') +
+    `a=ssrc:22${sdp.video.listenPortRtcp}22 cname:user${sdp.video.listenPortRtcp}@watchq.tv\r\n` +
     "";
 
   let kmsSdpOffer = sdpOfferHeader + sdpAudioOffer + sdpVideoOffer;
@@ -366,10 +368,6 @@ async function startKurentoRtpProducer(enableSrtp) {
     if (mediaType === 'VIDEO' && state === 'FLOWING') {
       setTimeout(startGStreamerRtmpStream, 1000);
     }
-  });
-
-  kmsRtpEndpoint.on('MediaFlowOutStateChange', (event) => {
-    console.log(`[RTP] Media flow-out state changed`, event);
   });
 
   console.log("SDP Offer from App to Kurento RTP SEND:\n%s", kmsSdpOffer);
