@@ -307,7 +307,7 @@ async function startKurentoRtpProducer(enableSrtp) {
     video: {
       listenPort: ports.vrtp,
       listenPortRtcp: ports.artcp,
-      payloadType: 96,
+      payloadType: 102,
     },
   }
 
@@ -332,13 +332,28 @@ async function startKurentoRtpProducer(enableSrtp) {
     `m=video ${sdp.video.listenPort} ${sdp.protocol} ${sdp.video.payloadType}\r\n` +
     `a=extmap:${sdp.headerExtensionId} http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\n` +
     "a=recvonly\r\n" +
-    `a=rtpmap:${sdp.video.payloadType} VP8/90000\r\n` +
+    `a=rtpmap:${sdp.video.payloadType} H264/90000\r\n` +
     `a=rtcp:${sdp.video.listenPortRtcp}\r\n` +
+    `a=fmtp:${sdp.video.payloadType} level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42001f\r\n` +
     "";
-    // `a=fmtp:${sdp.video.payloadType} level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42001f\r\n` +
 
   // Set maximum bitrate higher than default of 500 kbps
-  await kmsRtpEndpoint.setMaxVideoSendBandwidth(8000); // Send max 8mbps
+  await kmsRtpEndpoint.setMaxVideoSendBandwidth(4000); // Send max 8mbps
+  kmsRtpEndpoint.on('ConnectionStateChanged', (state) => {
+    console.log('Connection state changed', state);
+  });
+  kmsRtpEndpoint.on('MediaStateChanged', (state) => {
+    console.log('Media state changed', state);
+  });
+  kmsRtpEndpoint.on('MediaTranscodingStateChange', (state) => {
+    console.log('Media transcoding state changed', state);
+  });
+  kmsRtpEndpoint.on('MediaFlowInStateChange', (state) => {
+    console.log('Media flow-in state changed', state);
+  });
+  kmsRtpEndpoint.on('MediaFlowOutStateChange', (state) => {
+    console.log('Media flow-out state changed', state);
+  });
 
   console.log("SDP Offer from App to Kurento RTP SEND:\n%s", kmsSdpOffer);
   const kmsSdpAnswer = await kmsRtpEndpoint.processOffer(kmsSdpOffer);
@@ -371,12 +386,13 @@ function startGStreamerRtmpStream() {
     `filesrc location=${global.gstreamer.sdpFilesrc} !`,
     "sdpdemux name=sdpdm timeout=0",
     "sdpdm.stream_0 ! queue ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! voaacenc ! mux.",
-    "sdpdm.stream_1 ! queue ! rtpvp8depay ! vp8dec ! videoconvert ! x264enc bitrate=8000 key-int-max=2 ! mux.",
+    // "sdpdm.stream_1 ! queue ! rtpvp8depay ! vp8dec ! videoconvert ! x264enc key-int-max=2 ! mux.",
+    "sdpdm.stream_1 ! queue ! rtph264depay ! h264parse ! mux.",
     `flvmux name=mux streamable=true ! rtmpsink sync=true location=${global.gstreamer.rtmpTarget}${testFlag}`,
   ].join(' ').trim();
 
   let gstreamerEnv = {
-    GST_DEBUG: '2,xh264enc:4,flvmux:4,rtmpsink:4', // log level 4 = INFO
+    GST_DEBUG: '*:2,flvmux:4,rtmpsink:4', // log level 4 = INFO
   }
 
   console.log(
