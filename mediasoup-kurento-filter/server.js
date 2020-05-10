@@ -309,9 +309,7 @@ async function startKurentoRtpProducer(enableSrtp) {
 
   // Kurento RtpEndpoint (send media to gstreamer sink)
   // --------------------------------------------------
-  let sdpProtocol = "RTP/AVP";
   const ports = await Porter.getMediaPorts(4);
-
   const sdp = {
     listenIp: '127.0.0.1',
     protocol: 'RTP/AVP',
@@ -359,7 +357,7 @@ async function startKurentoRtpProducer(enableSrtp) {
   let kmsSdpOffer = sdpOfferHeader + sdpAudioOffer + sdpVideoOffer;
 
   // Set maximum bitrate higher than default of 500 kbps
-  await kmsRtpEndpoint.setMaxVideoSendBandwidth(3000); // Send max 8mbps
+  await kmsRtpEndpoint.setMaxVideoSendBandwidth(2000); // Send max 8mbps
   kmsRtpEndpoint.on('MediaFlowInStateChange', ({ mediaType, state }) => {
     console.log(`[RTP] Media flow-in state changed`, state);
 
