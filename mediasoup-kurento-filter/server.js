@@ -292,9 +292,6 @@ async function startKurentoRtpProducer(enableSrtp) {
 
   // Kurento RtpEndpoint (send media to gstreamer sink)
   // --------------------------------------------------
-  const sdpVideoPayloadType = 102;
-  const sdpHeaderExtId = 2;
-
   let sdpProtocol = "RTP/AVP";
   const ports = await Porter.getMediaPorts(4);
 
@@ -310,7 +307,7 @@ async function startKurentoRtpProducer(enableSrtp) {
     video: {
       listenPort: ports.vrtp,
       listenPortRtcp: ports.artcp,
-      payloadType: 102,
+      payloadType: 96,
     },
   }
 
@@ -335,10 +332,10 @@ async function startKurentoRtpProducer(enableSrtp) {
     `m=video ${sdp.video.listenPort} ${sdp.protocol} ${sdp.video.payloadType}\r\n` +
     `a=extmap:${sdp.headerExtensionId} http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\n` +
     "a=recvonly\r\n" +
-    `a=rtpmap:${sdp.video.payloadType} H264/90000\r\n` +
+    `a=rtpmap:${sdp.video.payloadType} VP8/90000\r\n` +
     `a=rtcp:${sdp.video.listenPortRtcp}\r\n` +
-    `a=fmtp:${sdp.video.payloadType} level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42001f\r\n` +
     "";
+    // `a=fmtp:${sdp.video.payloadType} level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42001f\r\n` +
 
   // Set maximum bitrate higher than default of 500 kbps
   await kmsRtpEndpoint.setMaxVideoSendBandwidth(3000); // Send max 3 mbps
@@ -374,12 +371,12 @@ function startGStreamerRtmpStream() {
     `filesrc location=${global.gstreamer.sdpFilesrc} !`,
     "sdpdemux name=sdpdm timeout=0",
     "sdpdm.stream_0 ! queue ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! voaacenc ! mux.",
-    "sdpdm.stream_1 ! queue ! rtph264depay ! h264parse ! mux.",
+    "sdpdm.stream_1 ! queue ! rtpvp8depay ! vp8dec ! videoconvert ! xh264enc bitrate=8000 ! mux.",
     `flvmux name=mux streamable=true ! rtmpsink sync=true location=${global.gstreamer.rtmpTarget}${testFlag}`,
   ].join(' ').trim();
 
   let gstreamerEnv = {
-    GST_DEBUG: '2,sdpdemux:4,flvmux:4,rtmpsink:4', // log level 4 = INFO
+    GST_DEBUG: '2,xh264enc:4,flvmux:4,rtmpsink:4', // log level 4 = INFO
   }
 
   console.log(
