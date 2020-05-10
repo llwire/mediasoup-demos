@@ -371,7 +371,7 @@ function startGStreamerRtmpStream() {
     `filesrc location=${global.gstreamer.sdpFilesrc} !`,
     "sdpdemux name=sdpdm timeout=0",
     "sdpdm.stream_0 ! queue ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! voaacenc ! mux.",
-    "sdpdm.stream_1 ! queue ! rtpvp8depay ! vp8dec ! videoconvert ! xh264enc bitrate=8000 ! mux.",
+    "sdpdm.stream_1 ! queue ! rtpvp8depay ! vp8dec ! videoconvert ! x264enc bitrate=8000 ! mux.",
     `flvmux name=mux streamable=true ! rtmpsink sync=true location=${global.gstreamer.rtmpTarget}${testFlag}`,
   ].join(' ').trim();
 
