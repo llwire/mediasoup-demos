@@ -21,6 +21,8 @@ const { v4: UUIDv4 } = require('uuid');
 // =================
 
 const global = {
+  sessionId: null,
+
   server: {
     expressApp: null,
     https: null,
@@ -123,6 +125,7 @@ const global = {
       "WebSocket server connected, port: %s",
       socket.request.connection.remotePort
     );
+    global.sessionId = socket.id;
     global.server.socket = socket;
 
     // Events sent by the client's "socket.io-promise" have the fixed name
@@ -320,7 +323,7 @@ async function startKurentoRtpProducer(enableSrtp) {
     },
     video: {
       listenPort: ports.vrtp,
-      listenPortRtcp: ports.artcp,
+      listenPortRtcp: ports.vrtcp,
       ...getMediaCapabilities('video/H264'),
     },
   }
@@ -342,7 +345,7 @@ async function startKurentoRtpProducer(enableSrtp) {
     `a=rtpmap:${sdp.audio.payloadType} ${sdp.audio.format}\r\n` +
     `a=fmtp:${sdp.audio.payloadType} ${sdp.audio.fmtp.config}\r\n` +
     `a=rtcp:${sdp.audio.listenPortRtcp}\r\n` +
-    `a=ssrc:11${sdp.audio.listenPortRtcp}11 cname:user${sdp.audio.listenPortRtcp}@watchq.tv\r\n` +
+    `a=ssrc:11${sdp.audio.listenPortRtcp}11 cname:user${global.sessionId}@watchq.tv\r\n` +
     "";
   // video
   const sdpVideoOffer =
@@ -353,7 +356,7 @@ async function startKurentoRtpProducer(enableSrtp) {
     `a=fmtp:${sdp.video.payloadType} ${sdp.video.fmtp.config}\r\n` +
     `a=rtcp:${sdp.video.listenPortRtcp}\r\n` +
     sdp.video.rtcpFb.map(fb => `a=rtcp-fb:${fb.payload} ${fb.type} ${fb.subtype || ''}`.trim() + '\r\n').join('') +
-    `a=ssrc:22${sdp.video.listenPortRtcp}22 cname:user${sdp.video.listenPortRtcp}@watchq.tv\r\n` +
+    `a=ssrc:22${sdp.video.listenPortRtcp}22 cname:user${global.sessionId}@watchq.tv\r\n` +
     "";
 
   let kmsSdpOffer = sdpOfferHeader + sdpAudioOffer + sdpVideoOffer;
