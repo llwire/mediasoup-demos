@@ -376,7 +376,7 @@ async function startKurentoRtpProducer(enableSrtp) {
   let audioRtcpExt = getRtcpParameters(kmsSdpAnswerObj, 'audio');
   let videoRtcpExt = getRtcpParameters(kmsSdpAnswerObj, 'video');
 
-  console.log('RTCP Extension', audioRtcpExt, videoRtcpExt);
+  console.log('RTCP/SSRC Extensions', audioRtcpExt, videoRtcpExt);
 
   // Write the SDP offer to the gstreamer SDP file src
   Fs.writeFileSync(global.gstreamer.sdpFilesrc, kmsSdpOffer);
@@ -518,10 +518,7 @@ function getRtcpParameters(sdpObject, kind) {
   const ssrcCname = (mediaObject.ssrcs || []).find(
     (s) => s.attribute && s.attribute === "cname"
   );
-  const cname = ssrcCname && ssrcCname.value ? ssrcCname.value : null;
-
-  // Get RTCP Reduced Size ("a=rtcp-rsize")
-  const reducedSize = "rtcpRsize" in mediaObject;
+  const cname = ssrcCname && ssrcCname.value ? ssrcCname : null;
 
   return { cname: cname, reducedSize: reducedSize };
 }
