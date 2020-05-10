@@ -345,7 +345,7 @@ async function startKurentoRtpProducer(enableSrtp) {
     "a=recvonly\r\n" +
     `a=rtpmap:${sdp.audio.payloadType} ${sdp.audio.format}\r\n` +
     `a=rtcp:${sdp.audio.listenPortRtcp}\r\n` +
-    `a=fmtp:${sdp.audio.payloadType} ${sdp.audio.fmtpConfig}\r\n` +
+    `a=fmtp:${sdp.audio.payloadType} ${sdp.audio.fmtp.config}\r\n` +
 
     // video
     `m=video ${sdp.video.listenPort} ${sdp.protocol} ${sdp.video.payloadType}\r\n` +
@@ -485,24 +485,6 @@ function getMediaCapabilities(mimeType) {
     fmtp: media.fmtp && media.fmtp.filter(fmtp => fmtp.payload === rtpPref.payload).shift(),
     rtcpFb: media.rtcpFb && media.rtcpFb.filter(rtcpFb => rtcpFb.payload === rtpPref.payload),
   };
-}
-
-// ----
-
-// Helper function:
-// Get mediasoup router's preferred HeaderExtension ID
-function getMsHeaderExtId(kind, name) {
-  const router = global.mediasoup.router;
-  let id = 0;
-
-  const ext = router.rtpCapabilities.headerExtensions.find(
-    (e) => e.kind === kind && e.uri.includes(name)
-  );
-  if (ext) {
-    id = ext.preferredId;
-  }
-
-  return id;
 }
 
 // ----
