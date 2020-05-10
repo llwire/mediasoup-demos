@@ -408,7 +408,7 @@ function startGStreamerRtmpStream() {
   let gstreamerArgs = [
     "--eos-on-shutdown",
     `filesrc location=${global.gstreamer.sdpFilesrc} !`,
-    "sdpdemux name=sdpdm timeout=0",
+    "sdpdemux name=sdpdm timeout=0 latency=0",
     "sdpdm.stream_0 ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! voaacenc ! mux.",
     "sdpdm.stream_1 ! rtph264depay ! h264parse config-interval=2 ! mux.",
     `flvmux name=mux streamable=true ! rtmpsink sync=false location=${global.gstreamer.rtmpTarget}${testFlag}`,
