@@ -338,7 +338,7 @@ async function startKurentoRtpProducer(enableSrtp) {
     // `a=fmtp:${sdp.video.payloadType} level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42001f\r\n` +
 
   // Set maximum bitrate higher than default of 500 kbps
-  await kmsRtpEndpoint.setMaxVideoSendBandwidth(3000); // Send max 3 mbps
+  await kmsRtpEndpoint.setMaxVideoSendBandwidth(8000); // Send max 8mbps
 
   console.log("SDP Offer from App to Kurento RTP SEND:\n%s", kmsSdpOffer);
   const kmsSdpAnswer = await kmsRtpEndpoint.processOffer(kmsSdpOffer);
@@ -371,7 +371,7 @@ function startGStreamerRtmpStream() {
     `filesrc location=${global.gstreamer.sdpFilesrc} !`,
     "sdpdemux name=sdpdm timeout=0",
     "sdpdm.stream_0 ! queue ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! voaacenc ! mux.",
-    "sdpdm.stream_1 ! queue ! rtpvp8depay ! vp8dec ! videoconvert ! x264enc bitrate=8000 ! mux.",
+    "sdpdm.stream_1 ! queue ! rtpvp8depay ! vp8dec ! videoconvert ! x264enc bitrate=8000 key-int-max=2 ! mux.",
     `flvmux name=mux streamable=true ! rtmpsink sync=true location=${global.gstreamer.rtmpTarget}${testFlag}`,
   ].join(' ').trim();
 
