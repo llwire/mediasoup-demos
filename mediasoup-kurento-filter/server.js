@@ -246,6 +246,7 @@ async function startKurentoSenderEndpoint(sdpOffer) {
   const rtpEndpoint = await pipeline.create("RtpEndpoint");
   const candidatesQueue = global.kurento.candidatesQueue;
 
+  await rtcEndpoint.setMaxVideoRecvBandwidth(4000);
   rtcEndpoint.on('OnIceCandidate', ({ candidate }) => {
     const parsedCandidate = KurentoClient.getComplexType('IceCandidate')(candidate);
 
