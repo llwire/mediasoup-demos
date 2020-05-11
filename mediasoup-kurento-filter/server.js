@@ -246,6 +246,7 @@ async function startKurentoSenderEndpoint(sdpOffer) {
   const rtpEndpoint = await pipeline.create("RtpEndpoint");
   const candidatesQueue = global.kurento.candidatesQueue;
 
+  await rtcEndpoint.setMinVideoRecvBandwidth(2000);
   await rtcEndpoint.setMaxVideoRecvBandwidth(4000);
   await rtcEndpoint.setMaxVideoSendBandwidth(4000);
   rtcEndpoint.on('OnIceCandidate', ({ candidate }) => {
@@ -375,7 +376,7 @@ async function startKurentoRtpProducer(enableSrtp) {
   // Set maximum bitrate higher than default of 500 kbps
   // Setting max bitrate of 4 Mbps for 1080p streaming
   // Ref https://support.google.com/youtube/answer/2853702
-  await kmsRtpEndpoint.setMaxVideoSendBandwidth(4000); // Send max 3mbps
+  await kmsRtpEndpoint.setMaxVideoSendBandwidth(4000); // Send max 4mbps
   kmsRtpEndpoint.on('MediaFlowInStateChange', ({ mediaType, state }) => {
     console.log(`[RTP] ${mediaType} flow-in state changed to ${state}\n`);
 
