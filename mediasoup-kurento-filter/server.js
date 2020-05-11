@@ -419,16 +419,16 @@ function startGStreamerRtmpStream() {
     `filesrc location=${global.gstreamer.sdpFilesrc} !`,
     "sdpdemux name=sdpdm timeout=0 latency=0",
     "sdpdm.stream_0 ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! voaacenc ! mux.",
-    "sdpdm.stream_1 ! rtph264depay ! h264parse config-interval=2 ! mux.",
-    `flvmux name=mux streamable=true ! queue ! progressreport name=videoProgress update-freq=2 !`,
+    "sdpdm.stream_1 ! rtph264depay ! h264parse config-interval=2 !",
+    "progressreport name=videoProgress update-freq=2 ! mux.",
+    `flvmux name=mux streamable=true ! queue !`,
     `rtmpsink sync=false location="${global.gstreamer.rtmpTarget}${testFlag} live=1"`,
   ].join(' ').trim();
 
-
   let gstreamerEnv = {
-    // GST_DEBUG: 'GST_TRACER:4,progressreport:6', // log level 4 = INFO
-    // GST_DEBUG_NO_COLOR: 'off',
-    // GST_TRACERS: 'log(events);stats(events)',
+    GST_DEBUG: 'rtmpsink:4', // log level 4 = INFO
+    GST_DEBUG_NO_COLOR: 'off',
+    GST_TRACERS: 'log(events);stats(events)',
   }
 
   console.log(
