@@ -420,7 +420,7 @@ function startGStreamerRtmpStream() {
     "sdpdemux name=sdpdm timeout=0 latency=0",
     "sdpdm.stream_0 ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! voaacenc ! mux.",
     "sdpdm.stream_1 ! rtph264depay ! h264parse config-interval=2 !",
-    "progressreport name=videoProgress update-freq=2 ! mux.",
+    "progressreport name=videoProgress update-freq=2 do-query=false ! mux.",
     `flvmux name=mux streamable=true ! queue !`,
     `rtmpsink sync=false location="${global.gstreamer.rtmpTarget}${testFlag} live=1"`,
   ].join(' ').trim();
