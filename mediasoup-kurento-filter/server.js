@@ -408,17 +408,18 @@ function startGStreamerRtmpStream() {
   let gstreamerArgs = [
     "--eos-on-shutdown",
     `filesrc location=${global.gstreamer.sdpFilesrc} !`,
-    "sdpdemux name=sdpdm timeout=0 latency=0",
+    "sdpdemux name=sdpdm timeout=0 latency=0 message-forward=true",
     "sdpdm.stream_0 ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! voaacenc ! mux.",
     "sdpdm.stream_1 ! rtph264depay ! h264parse config-interval=2 ! mux.",
-    `flvmux name=mux streamable=true ! rtmpsink sync=false location=${global.gstreamer.rtmpTarget}${testFlag}`,
+    `flvmux name=mux streamable=true !`,
+    `rtmpsink sync=false location=${global.gstreamer.rtmpTarget}${testFlag} live=1`,
   ].join(' ').trim();
 
   // avdec_h264 ! x264enc key-int-max=2
   // "sdpdm.stream_1 ! queue ! rtpvp8depay ! vp8dec ! videoconvert ! x264enc key-int-max=2 ! mux.",
 
   let gstreamerEnv = {
-    GST_DEBUG: '*:2,flvmux:4,rtmpsink:4', // log level 4 = INFO
+    GST_DEBUG: '*:2,sdpdemux:4,flvmux:4,rtmpsink:4', // log level 4 = INFO
   }
 
   console.log(
@@ -458,23 +459,17 @@ function startGStreamerRtmpStream() {
       .forEach((line) => {
         console.log(line);
         if (line.startsWith("Setting pipeline to PLAYING")) {
-          setTimeout(() => {
-            streamResolve();
-          }, 1000);
+          setTimeout(() => streamResolve(), 1000);
         }
       });
   });
- let out = []
   // GStreamer writes its progress logs to stderr
   gstreamer.stderr.on("data", (chunk) => {
     chunk
       .toString()
       .split(/\r?\n/g)
       .filter(Boolean) // Filter out empty strings
-      .forEach((line) => {
-        out.push(line);
-        console.log(line);
-      });
+      .forEach((line) => console.log(line));
   });
 
   return streamPromise;
