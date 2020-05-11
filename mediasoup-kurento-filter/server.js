@@ -417,9 +417,9 @@ function startGStreamerRtmpStream() {
 
 
   let gstreamerEnv = {
-    GST_DEBUG: 'GST_TRACER:4,progressreport:6', // log level 4 = INFO
-    GST_DEBUG_NO_COLOR: 'off',
-    GST_TRACERS: 'log(events);stats(events)',
+    // GST_DEBUG: 'GST_TRACER:4,progressreport:6', // log level 4 = INFO
+    // GST_DEBUG_NO_COLOR: 'off',
+    // GST_TRACERS: 'log(events);stats(events)',
   }
 
   console.log(
