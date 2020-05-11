@@ -451,14 +451,13 @@ function startGStreamerRtmpStream() {
   // GStreamer writes some initial logs to stdout
   // Detect when the pipeline is playing and resolve the stream as live
   gstreamer.stdout.on("data", (chunk) => {
-    out = [];
     chunk
       .toString()
       .split(/\r?\n/g)
       .filter(Boolean) // Filter out empty strings
       .forEach((line) => {
-        console.log(line);
         if (line.startsWith("Setting pipeline to PLAYING")) {
+          console.log(line);
           setTimeout(() => streamResolve(), 1000);
         }
       });
