@@ -413,7 +413,7 @@ function startGStreamerRtmpStream() {
     "sdpdm.stream_1 ! rtph264depay ! h264parse config-interval=2 ! mux.",
     `flvmux name=mux streamable=true !`,
     `progressreport name="RtmpStream" update-freq=10 !`,
-    `rtmpsink qos=true sync=false location="${global.gstreamer.rtmpTarget}${testFlag} live=1"`,
+    `rtmpsink qos=true sync=false location="${global.gstreamer.rtmpTarget}${testFlag} live=1" stats`,
   ].join(' ').trim();
 
   // avdec_h264 ! x264enc key-int-max=2
