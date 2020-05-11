@@ -13,6 +13,7 @@ const SocketServer = require("socket.io");
 const Util = require("util");
 const Process = require("child_process");
 const Porter = require("./porter")();
+const { default: Ntp } = require("ntp-time-sync");
 const { v4: UUIDv4 } = require('uuid');
 
 // ----------------------------------------------------------------------------
@@ -21,6 +22,7 @@ const { v4: UUIDv4 } = require('uuid');
 // =================
 
 const global = {
+  ntp: Ntp.getInstance(),
   sessionId: null,
 
   server: {
@@ -313,6 +315,7 @@ async function startKurentoRtpProducer(enableSrtp) {
   // Kurento RtpEndpoint (send media to gstreamer sink)
   // --------------------------------------------------
   const ports = await Porter.getMediaPorts(4);
+  const timing = await getSdpTimeParameters();
   const sdp = {
     listenIp: '127.0.0.1',
     protocol: 'RTP/AVPF',
@@ -330,12 +333,17 @@ async function startKurentoRtpProducer(enableSrtp) {
 
   // SDP Offer for Kurento RtpEndpoint
   // prettier-ignore
-  const sdpOfferHeader =
+  const sdpBaseHeader =
     "v=0\r\n" +
     `o=- 0 0 IN IP4 ${sdp.listenIp}\r\n` +
     "s=-\r\n" +
     `c=IN IP4 ${sdp.listenIp}\r\n` +
-    "t=0 0\r\n";
+    "";
+
+  // To KMS, the Session is not bounded by time
+  // To GStreamer, the session has an end so we can do psuedo-progress tracking
+  const sdpOfferHeader = sdpBaseHeader + "t=0 0\r\n";
+  const sdpStreamHeader = sdpBaseHeader + `t=${timing.start} ${timing.end}\r\n`;
 
   // audio
   const sdpAudioOffer =
@@ -360,6 +368,7 @@ async function startKurentoRtpProducer(enableSrtp) {
     "";
 
   let kmsSdpOffer = sdpOfferHeader + sdpAudioOffer + sdpVideoOffer;
+  let gstreamerSdp = sdpStreamHeader + sdpAudioOffer + sdpVideoOffer;
 
   // Set maximum bitrate higher than default of 500 kbps
   // Setting max bitrate of 4 Mbps for 1080p streaming
@@ -384,7 +393,7 @@ async function startKurentoRtpProducer(enableSrtp) {
   console.log('RTCP/SSRC Extensions', audioRtcpExt, videoRtcpExt);
 
   // Write the SDP offer to the gstreamer SDP file src
-  Fs.writeFileSync(global.gstreamer.sdpFilesrc, kmsSdpOffer);
+  Fs.writeFileSync(global.gstreamer.sdpFilesrc, gstreamerSdp);
 }
 
 // ----------------------------------------------------------------------------
@@ -410,8 +419,8 @@ function startGStreamerRtmpStream() {
     `filesrc location=${global.gstreamer.sdpFilesrc} !`,
     "sdpdemux name=sdpdm timeout=0 latency=0",
     "sdpdm.stream_0 ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! voaacenc ! mux.",
-    "sdpdm.stream_1 ! progressreport name=videoProgress update-freq=2 ! rtph264depay ! h264parse config-interval=2 ! mux.",
-    `flvmux name=mux streamable=true ! queue !`,
+    "sdpdm.stream_1 ! rtph264depay ! h264parse config-interval=2 ! mux.",
+    `flvmux name=mux streamable=true ! queue ! progressreport name=videoProgress update-freq=2 !`,
     `rtmpsink sync=false location="${global.gstreamer.rtmpTarget}${testFlag} live=1"`,
   ].join(' ').trim();
 
@@ -519,6 +528,17 @@ function getRtcpParameters(sdpObject, kind) {
   const cname = ssrcCname && ssrcCname.value ? ssrcCname : null;
 
   return { cname: cname };
+}
+
+// ---
+
+async function getSdpTimeParameters(duration=86400) {
+  await time = global.ntp.getTime();
+
+  const start = time.now / 1000;
+  const end = start + duration;
+
+  return { start, end };
 }
 
 // ----------------------------------------------------------------------------
