@@ -415,11 +415,9 @@ function startGStreamerRtmpStream() {
     `rtmpsink qos=true sync=false location="${global.gstreamer.rtmpTarget}${testFlag} live=1"`,
   ].join(' ').trim();
 
-  // avdec_h264 ! x264enc key-int-max=2
-  // "sdpdm.stream_1 ! queue ! rtpvp8depay ! vp8dec ! videoconvert ! x264enc key-int-max=2 ! mux.",
 
   let gstreamerEnv = {
-    GST_DEBUG: '*:2,sdpdemux:4,flvmux:4,rtmpsink:4', // log level 4 = INFO
+    GST_DEBUG: '*:2,sdpdemux:4,flvmux:4,rtmpsink:4,GST_TRACER:7', // log level 4 = INFO
     GST_TRACERS: 'stats',
   }
 
