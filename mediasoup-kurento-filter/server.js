@@ -376,6 +376,7 @@ async function startKurentoRtpProducer(enableSrtp) {
   // Set maximum bitrate higher than default of 500 kbps
   // Setting max bitrate of 4 Mbps for 1080p streaming
   // Ref https://support.google.com/youtube/answer/2853702
+  await kmsRtpEndpoint.setMaxVideoSendBandwidth(3000); // Send max 4mbps
   await kmsRtpEndpoint.setMaxVideoSendBandwidth(4000); // Send max 4mbps
   kmsRtpEndpoint.on('MediaFlowInStateChange', ({ mediaType, state }) => {
     console.log(`[RTP] ${mediaType} flow-in state changed to ${state}\n`);
