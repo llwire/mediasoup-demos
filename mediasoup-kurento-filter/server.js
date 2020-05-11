@@ -411,14 +411,14 @@ function startGStreamerRtmpStream() {
     "sdpdemux name=sdpdm timeout=0 latency=0 message-forward=true",
     "sdpdm.stream_0 ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! voaacenc ! mux.",
     "sdpdm.stream_1 ! rtph264depay ! h264parse config-interval=2 ! mux.",
-    `flvmux name=mux streamable=true ! identity !`,
+    `flvmux name=mux streamable=true !`,
     `rtmpsink sync=false location="${global.gstreamer.rtmpTarget}${testFlag} live=1"`,
   ].join(' ').trim();
 
 
   let gstreamerEnv = {
     GST_DEBUG: '*:2,sdpdemux:4,flvmux:4,rtmpsink:4', // log level 4 = INFO
-    GST_TRACERS: 'latency(flags=element)',
+    GST_TRACERS: 'latency',
   }
 
   console.log(
