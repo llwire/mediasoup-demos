@@ -533,7 +533,7 @@ function getRtcpParameters(sdpObject, kind) {
 // ---
 
 async function getSdpTimeParameters(duration=86400) {
-  await time = global.ntp.getTime();
+  const time = await global.ntp.getTime();
 
   const start = time.now / 1000;
   const end = start + duration;
