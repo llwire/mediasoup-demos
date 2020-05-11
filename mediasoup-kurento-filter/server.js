@@ -417,7 +417,7 @@ function startGStreamerRtmpStream() {
 
 
   let gstreamerEnv = {
-    GST_DEBUG: '*:2,sdpdemux:4,flvmux:4,rtmpsink:4', // log level 4 = INFO
+    GST_DEBUG: 'GST_TRACER:7', // log level 4 = INFO
     GST_TRACERS: 'latency',
   }
 
