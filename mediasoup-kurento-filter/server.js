@@ -430,7 +430,7 @@ function startGStreamerRtmpStream() {
   ].join(' ').trim();
 
   let gstreamerEnv = {
-    GST_DEBUG: 'rtmpsink:4', // log level 4 = INFO
+    GST_DEBUG: 'progressreport:7', // log level 4 = INFO
     GST_DEBUG_NO_COLOR: 'off',
     GST_TRACERS: 'log(events);stats(events)',
   }
